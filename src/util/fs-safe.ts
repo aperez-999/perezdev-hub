@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile, stat, copyFile, unlink } from "node:fs/promises";
-import { dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
+import { inspoDir } from "../core/config.js";
 
 /** Does a path exist? */
 export async function exists(path: string): Promise<boolean> {
@@ -61,6 +62,47 @@ export async function removeIfExists(path: string): Promise<boolean> {
   if (!(await exists(path))) return false;
   await unlink(path);
   return true;
+}
+
+/** Copy a file to a timestamped backup in the app cache. Returns the backup path. */
+export async function cacheBackup(path: string, stamp: string): Promise<string | null> {
+  if (!(await exists(path))) return null;
+  const dir = join(inspoDir(), "backups");
+  await mkdir(dir, { recursive: true });
+  const dest = join(dir, `${basename(path)}.${stamp.replace(/[:.]/g, "-")}.bak`);
+  await copyFile(path, dest);
+  return dest;
+}
+
+/** Throws if `text` is not the expected format. */
+export type Validator = (text: string) => void;
+export const validateJson: Validator = (t) => {
+  JSON.parse(t);
+};
+
+/** Validate the intended contents, then write atomically. Bad content never lands. */
+export async function atomicWriteValidated(path: string, contents: string, validate?: Validator): Promise<void> {
+  if (validate) validate(contents);
+  await atomicWrite(path, contents);
+}
+
+/**
+ * Run `fn`, having cache-backed-up `paths` first. If `fn` throws, restore each
+ * path from its backup (or delete it if it didn't exist), then rethrow — so a
+ * mid-task crash never leaves a half-written config behind.
+ */
+export async function withRollback<T>(paths: string[], stamp: string, fn: () => Promise<T>): Promise<T> {
+  const backups = new Map<string, string | null>();
+  for (const p of paths) backups.set(p, await cacheBackup(p, stamp));
+  try {
+    return await fn();
+  } catch (err) {
+    for (const [p, bak] of backups) {
+      if (bak) await copyFile(bak, p);
+      else await removeIfExists(p);
+    }
+    throw err;
+  }
 }
 
 /** A single line-level diff entry for preview. */
