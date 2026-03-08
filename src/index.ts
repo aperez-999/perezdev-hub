@@ -13,6 +13,8 @@ import { runManage } from "./commands/manage.js";
 import { runStackInstall } from "./commands/stacks.js";
 import { runHome } from "./commands/home.js";
 import { runTui } from "./commands/tui.js";
+import { runFix } from "./commands/fix.js";
+import { runMap } from "./commands/map.js";
 
 const program = new Command();
 
@@ -106,6 +108,19 @@ program
   .command("doctor")
   .description("Diagnose config drift and broken installs")
   .action(wrap(runDoctor));
+
+program
+  .command("fix")
+  .argument("[file]", "log/traceback file (or pipe one into stdin)")
+  .description("Diagnose a traceback: root file/line, cause, and the fix (Python engine)")
+  .action(wrap(runFix));
+
+program
+  .command("map")
+  .argument("[dir]", "directory to map (default: .)")
+  .option("-d, --depth <n>", "max depth", "3")
+  .description("Print a file-tree map of a directory (Python engine)")
+  .action(wrap(runMap));
 
 /** Wrap an async command so rejections print cleanly and exit non-zero. */
 function wrap<A extends unknown[]>(fn: (...args: A) => Promise<void>) {
