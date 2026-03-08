@@ -9,7 +9,8 @@
     "inspo": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "python"
   ],
   "engines": {
     "node": ">=20"
