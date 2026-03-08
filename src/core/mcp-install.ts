@@ -2,7 +2,7 @@ import type { McpDependency, ToolId } from "./agent-spec.js";
 import type { PlannedFile } from "../adapters/types.js";
 import { getAdapter } from "../adapters/registry.js";
 import { mergeMcpJson, pruneMcpJson } from "../adapters/shared.js";
-import { atomicWrite, backup, readIfExists } from "../util/fs-safe.js";
+import { atomicWriteValidated, cacheBackup, readIfExists, validateJson, withRollback } from "../util/fs-safe.js";
 import { getMcpEntry, listMcpEntries, removeMcpEntry, upsertMcpEntry } from "./lockfile.js";
 import type { RegistryMcpServer } from "../registry/index.js";
 
@@ -48,10 +48,17 @@ export async function installMcpServer(
 ): Promise<McpInstallResult> {
   const dep = toDependency(server);
   const supported = mcpTargets(targets);
-  for (const { path } of supported) {
-    await backup(path);
-    await atomicWrite(path, await mergeMcpJson(path, [dep]));
-  }
+  // Backed-up, validated, all-or-nothing: a bad merge rolls every config back.
+  await withRollback(
+    supported.map((s) => s.path),
+    now,
+    async () => {
+      for (const { path } of supported) {
+        await cacheBackup(path, now);
+        await atomicWriteValidated(path, await mergeMcpJson(path, [dep]), validateJson);
+      }
+    },
+  );
   const installedTo = supported.map((s) => s.tool);
   if (installedTo.length > 0) {
     // Union with any previously-recorded targets so re-installing with a
@@ -70,11 +77,12 @@ export async function installMcpServer(
 export async function removeMcpServer(id: string): Promise<boolean> {
   const entry = await getMcpEntry(id);
   if (!entry) return false;
+  const now = new Date().toISOString();
   for (const { path } of mcpTargets(entry.targets)) {
     const pruned = await pruneMcpJson(path, [entry.dependency]);
     if (pruned !== null) {
-      await backup(path);
-      await atomicWrite(path, pruned);
+      await cacheBackup(path, now);
+      await atomicWriteValidated(path, pruned, validateJson);
     }
   }
   await removeMcpEntry(id);
