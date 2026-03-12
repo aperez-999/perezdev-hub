@@ -181,6 +181,9 @@ function buildTargetOptions(ids: ToolId[]) {
     cursor: "Cursor",
     copilot: "GitHub Copilot",
     codex: "Codex",
+    cline: "Cline",
+    windsurf: "Windsurf",
+    roo: "Roo Code",
   };
   return ids.map((id) => ({ value: id, label: labels[id] }));
 }
