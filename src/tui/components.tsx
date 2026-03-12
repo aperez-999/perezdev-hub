@@ -17,10 +17,12 @@ export function Logo({ gradient }: { gradient: string }): React.ReactElement {
   );
 }
 
-/** Tool detection badges row. */
-export function ToolBadges({ tools }: { tools: ToolBadge[] }): React.ReactElement {
+const CLI_TOOLS = new Set(["claude-code", "codex"]);
+
+function badgeGroup(label: string, tools: ToolBadge[]): React.ReactElement {
   return (
     <Text>
+      <Text dimColor>{label.padEnd(7)}</Text>
       {tools.map((t) => (
         <Text key={t.id} color={t.installed ? theme.ok : theme.muted}>
           {t.installed ? "● " : "○ "}
@@ -29,6 +31,16 @@ export function ToolBadges({ tools }: { tools: ToolBadge[] }): React.ReactElemen
         </Text>
       ))}
     </Text>
+  );
+}
+
+/** Tool detection badges, grouped into CLIs and IDEs. */
+export function ToolBadges({ tools }: { tools: ToolBadge[] }): React.ReactElement {
+  return (
+    <Box flexDirection="column">
+      {badgeGroup("[CLIs]", tools.filter((t) => CLI_TOOLS.has(t.id)))}
+      {badgeGroup("[IDEs]", tools.filter((t) => !CLI_TOOLS.has(t.id)))}
+    </Box>
   );
 }
 
