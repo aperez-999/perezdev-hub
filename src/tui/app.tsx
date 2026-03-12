@@ -13,7 +13,10 @@ import {
   updateInstalled,
   catalogMcp,
   catalogCli,
+  engineMap,
+  engineDiagnose,
   type HomeData,
+  type Diagnosis,
 } from "./data.js";
 import { slugSchema } from "../core/agent-spec.js";
 
@@ -21,7 +24,7 @@ export interface ExitResult {
   action: null;
 }
 
-type View = "home" | "recommend" | "installed" | "browse" | "describe";
+type View = "home" | "recommend" | "installed" | "browse" | "describe" | "map" | "diagnose";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function App(): React.ReactElement {
@@ -74,6 +77,8 @@ export function App(): React.ReactElement {
         {view === "installed" && <InstalledView data={data} onBack={() => go("home")} reload={reload} />}
         {view === "browse" && <BrowseView data={data} onBack={() => go("home")} reload={reload} />}
         {view === "describe" && <DescribeView data={data} onBack={() => go("home")} reload={reload} />}
+        {view === "map" && <RuntimeMapView onBack={() => go("home")} />}
+        {view === "diagnose" && <RuntimeDiagnoseView onBack={() => go("home")} />}
       </Box>
     </Box>
   );
@@ -84,6 +89,8 @@ const MENU: { value: View | "quit"; label: string; hint: string }[] = [
   { value: "describe", label: "Describe an agent to build", hint: "type what you want" },
   { value: "installed", label: "Manage installed", hint: "update · remove" },
   { value: "browse", label: "Browse MCP & CLI agents", hint: "catalog" },
+  { value: "map", label: "Map project tree", hint: "local engine" },
+  { value: "diagnose", label: "Diagnose a log file", hint: "local engine" },
   { value: "quit", label: "Quit", hint: "" },
 ];
 
@@ -430,6 +437,94 @@ function DescribeView({
       )}
       {err ? <Text color={theme.bad}>{err}</Text> : null}
       <Footer keys="enter continue · esc back" />
+    </Box>
+  );
+}
+
+function RuntimeMapView({ onBack }: { onBack: () => void }): React.ReactElement {
+  const [tree, setTree] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useInput((_i, key) => {
+    if (key.escape || _i === "q") onBack();
+  });
+  useEffect(() => {
+    engineMap(process.cwd(), 2).then((r) => setTree(r.tree)).catch((e: unknown) => setErr(String(e instanceof Error ? e.message : e)));
+  }, []);
+  return (
+    <Box flexDirection="column">
+      <Text bold>Project map  <Text dimColor>local engine</Text></Text>
+      <Box marginTop={1} flexDirection="column">
+        {err ? (
+          <Text color={theme.bad}>{err}</Text>
+        ) : tree === null ? (
+          <Loading label="mapping the file tree" />
+        ) : (
+          tree.split("\n").slice(0, 24).map((l, i) => (
+            <Text key={i} dimColor={i > 0}>
+              {l}
+            </Text>
+          ))
+        )}
+      </Box>
+      <Footer keys="esc back" />
+    </Box>
+  );
+}
+
+function RuntimeDiagnoseView({ onBack }: { onBack: () => void }): React.ReactElement {
+  const [path, setPath] = useState("");
+  const [phase, setPhase] = useState<"input" | "running" | "done">("input");
+  const [res, setRes] = useState<Diagnosis | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useInput((_i, key) => {
+    if (key.escape && phase !== "running") onBack();
+  });
+  return (
+    <Box flexDirection="column">
+      <Text bold>Diagnose a log file  <Text dimColor>local engine</Text></Text>
+      <Box marginTop={1}>
+        <Text dimColor>path  </Text>
+        {phase === "input" ? (
+          <TextInput
+            value={path}
+            onChange={setPath}
+            placeholder="/path/to/error.log"
+            onSubmit={(v) => {
+              if (!v.trim()) return;
+              setPhase("running");
+              engineDiagnose(v.trim())
+                .then((d) => {
+                  setRes(d);
+                  setPhase("done");
+                })
+                .catch((e: unknown) => {
+                  setErr(String(e instanceof Error ? e.message : e));
+                  setPhase("done");
+                });
+            }}
+          />
+        ) : (
+          <Text>{path}</Text>
+        )}
+      </Box>
+      {phase === "running" && (
+        <Box marginTop={1}>
+          <Loading label="analyzing" />
+        </Box>
+      )}
+      {phase === "done" && err && <Text color={theme.bad}>{err}</Text>}
+      {phase === "done" && res && (
+        <Box marginTop={1} flexDirection="column">
+          <Text>
+            <Text color={theme.bad} bold>{res.kind}</Text>  {res.message}
+          </Text>
+          <Text color={theme.ok}>{`→ ${res.hint}`}</Text>
+          {res.frames.map((f) => (
+            <Text key={`${f.file}:${f.line}`} dimColor>{`  ${f.file}:${f.line}`}</Text>
+          ))}
+        </Box>
+      )}
+      <Footer keys="enter analyze · esc back" />
     </Box>
   );
 }

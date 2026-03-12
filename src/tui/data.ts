@@ -124,3 +124,23 @@ export async function updateInstalled(spec: AgentSpec, bump: boolean): Promise<v
 }
 
 export { getMcpServer };
+
+// --- Local Python engine (runtime tools) ---
+import { engineRequest } from "../engine/bridge.js";
+
+export interface TreeResult {
+  tree: string;
+  count: number;
+}
+export interface Diagnosis {
+  message: string;
+  kind: string;
+  hint: string;
+  frames: { file: string; line: number; snippet: string | null }[];
+}
+
+export const engineMap = (dir: string, depth = 2): Promise<TreeResult> =>
+  engineRequest<TreeResult>("filetree", { dir, depth });
+
+export const engineDiagnose = (file: string): Promise<Diagnosis> =>
+  engineRequest<Diagnosis>("diagnose", { file });
