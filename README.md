@@ -69,6 +69,8 @@ Two generation modes:
 | `perezdev export <name>` | Export an agent as JSON (`--out <file>`) for sharing |
 | `perezdev import <file>` | Install a shared agent from JSON |
 | `perezdev stack <id>` | Install a bundled set of agents + MCP servers at once |
+| `perezdev fix [file]` | Diagnose a traceback (file or piped) → cause, file:line, and the fix |
+| `perezdev map [dir]` | Print a file-tree map of a directory (`-d` depth) |
 | `perezdev init` | Detect installed AI tools, set up `~/.config/perezdev` |
 | `perezdev doctor` | Diagnose config drift and broken installs |
 
@@ -80,15 +82,24 @@ One canonical **agent spec** is translated into each tool's native format by a p
 
 - **Claude Code** — `~/.claude/skills/<name>/SKILL.md` + MCP servers in `settings.json`
 - **Cursor** — `~/.cursor/rules/<name>.mdc` + MCP servers in `mcp.json`
-- **Copilot / Codex** — markdown instruction files (MCP not yet wired)
+- **Copilot / Codex / Cline / Windsurf / Roo Code** — per-agent markdown rule files in each tool's config dir
 
 Adding a tool is one new adapter file. inspo records what it installs in `~/.config/perezdev/perezdev-lock.json`, so `list`, `update`, `doctor`, and `remove` work across every tool.
 
 MCP servers can also be installed standalone (no owning agent) into the MCP-capable tools.
 
+## Local engine (Python)
+
+Some features run on a local Python 3 engine (stdlib only), spoken to over a JSON stdin/stdout protocol from the TypeScript side — no cloud calls:
+
+- **`perezdev fix`** — parses a traceback, finds the offending file and line, classifies the error, and prints the fix (e.g. the exact `pip`/`npm install`).
+- **`perezdev map`** — a fast file-tree map of any directory.
+
+Both are also reachable from the TUI under **Map project tree** and **Diagnose a log file**. If `python3` is missing, the feature reports a readable error instead of failing — the rest of the app works regardless.
+
 ## Safety
 
-inspo only writes to each tool's standard config directories, backs up files before changing them, previews a diff before writing, and never injects into shell rc files.
+inspo only writes to each tool's standard config directories and never injects into shell rc files. Config writes are guarded: a timestamped backup is copied into the app cache, the new content is validated and written atomically (via a temp file), and if a multi-file task throws mid-way every touched file is rolled back to its backup.
 
 ## Development
 
