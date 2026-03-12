@@ -8,7 +8,7 @@ import { z } from "zod";
  * (template or LLM) produces an AgentSpec; managing reads/writes them.
  */
 
-export const TOOL_IDS = ["claude-code", "cursor", "copilot", "codex"] as const;
+export const TOOL_IDS = ["claude-code", "cursor", "copilot", "codex", "cline", "windsurf", "roo"] as const;
 export type ToolId = (typeof TOOL_IDS)[number];
 
 /** A slug: lowercase letters, numbers, hyphens. Used as filename + key. */

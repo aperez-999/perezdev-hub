@@ -104,6 +104,20 @@ describe("CodexAdapter (flat markdown)", () => {
   });
 });
 
+describe("ClineAdapter (flat markdown)", () => {
+  it("writes a rule file under ~/.clinerules and removes it", async () => {
+    const { ClineAdapter } = await import("../src/adapters/cline.js");
+    const a = new ClineAdapter();
+    const s = spec({ targets: ["cline"] });
+    await a.write(s);
+    const f = join(home, ".clinerules", "code-reviewer.md");
+    expect(await readFile(f, "utf8")).toContain("x-inspo: true");
+    expect(await a.list()).toHaveLength(1);
+    expect(await a.remove(s)).toBe(true);
+    expect(await a.list()).toHaveLength(0);
+  });
+});
+
 describe("registry detection", () => {
   it("detects a tool only when its root dir exists", async () => {
     const { detectAll } = await import("../src/adapters/registry.js");
