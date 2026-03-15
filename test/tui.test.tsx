@@ -35,13 +35,13 @@ async function until(fn: () => boolean, timeout = 4000): Promise<void> {
 describe("TUI App", () => {
   it("renders the home after scanning and navigates into Recommend", async () => {
     const { lastFrame, stdin } = render(<App />);
-    // Loading state first.
     expect(lastFrame()).toMatch(/PEREZDEV|scanning/i);
-    // Home appears after the scan (reload has a 700ms min).
     await until(() => /Recommend for this project/.test(lastFrame() ?? ""));
-    expect(lastFrame()).toMatch(/Describe an agent/);
+    expect(lastFrame()).toMatch(/Prompt local AI/);
 
-    // Enter selects the highlighted "Recommend" item → Recommend view.
+    // "Prompt local AI" is first; move down to "Recommend" (j), then select.
+    stdin.write("j");
+    await wait(80);
     stdin.write("\r");
     await until(() => /Recommended|fully set up/.test(lastFrame() ?? ""));
   });
