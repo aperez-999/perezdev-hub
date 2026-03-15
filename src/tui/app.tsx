@@ -19,12 +19,13 @@ import {
   type Diagnosis,
 } from "./data.js";
 import { slugSchema } from "../core/agent-spec.js";
+import { ChatView } from "./chat.js";
 
 export interface ExitResult {
   action: null;
 }
 
-type View = "home" | "recommend" | "installed" | "browse" | "describe" | "map" | "diagnose";
+type View = "home" | "chat" | "recommend" | "installed" | "browse" | "describe" | "map" | "diagnose";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function App(): React.ReactElement {
@@ -64,6 +65,15 @@ export function App(): React.ReactElement {
     );
   }
 
+  // Chat takes over the screen (its own header/footer), no shared chrome.
+  if (view === "chat") {
+    return (
+      <Box flexDirection="column" paddingX={2} paddingY={1}>
+        <ChatView gradient={GRADIENTS[grad]!} onBack={() => go("home")} />
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Logo gradient={GRADIENTS[grad]!} />
@@ -85,6 +95,7 @@ export function App(): React.ReactElement {
 }
 
 const MENU: { value: View | "quit"; label: string; hint: string }[] = [
+  { value: "chat", label: "Prompt local AI", hint: "ollama · local models" },
   { value: "recommend", label: "Recommend for this project", hint: "tailored, generated" },
   { value: "describe", label: "Describe an agent to build", hint: "type what you want" },
   { value: "installed", label: "Manage installed", hint: "update · remove" },
