@@ -9,6 +9,10 @@ import json
 import os
 import re
 import sys
+import urllib.error
+import urllib.request
+
+OLLAMA = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 
 PY_FRAME = re.compile(r'File "([^"]+)", line (\d+)')
 JS_FRAME = re.compile(r'\(?([\/\w.\-]+\.(?:js|ts|tsx|jsx)):(\d+):(\d+)\)?')
@@ -111,14 +115,63 @@ def filetree(params):
     return {"tree": "\n".join(lines), "count": len(lines) - 1}
 
 
+def ollama_tags(params):
+    try:
+        with urllib.request.urlopen(OLLAMA + "/api/tags", timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+        return {"available": True, "models": models}
+    except urllib.error.URLError as exc:
+        return {"available": False, "models": [], "error": "Ollama not reachable at %s (%s)" % (OLLAMA, exc.reason)}
+    except Exception as exc:
+        return {"available": False, "models": [], "error": str(exc)}
+
+
+def ollama_generate(params, emit):
+    """Stream a completion from Ollama; emit tokens, return the full text."""
+    model = params.get("model")
+    if not model:
+        raise ValueError("ollama_generate requires a model")
+    body = {"model": model, "prompt": params.get("prompt", ""), "stream": True}
+    if params.get("system"):
+        body["system"] = params["system"]
+    if params.get("options"):
+        body["options"] = params["options"]
+    req = urllib.request.Request(
+        OLLAMA + "/api/generate",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    parts = []
+    try:
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            for line in resp:
+                line = line.strip()
+                if not line:
+                    continue
+                evt = json.loads(line.decode("utf-8"))
+                tok = evt.get("response", "")
+                if tok:
+                    parts.append(tok)
+                    emit(tok)
+                if evt.get("done"):
+                    break
+    except urllib.error.URLError as exc:
+        raise RuntimeError("Ollama not reachable at %s (%s)" % (OLLAMA, exc.reason))
+    return {"model": model, "response": "".join(parts)}
+
+
 OPS = {
     "ping": lambda p: {"pong": True, "python": sys.version.split()[0]},
     "diagnose": diagnose,
     "filetree": filetree,
+    "ollama_tags": ollama_tags,
 }
+STREAM_OPS = {"ollama_generate": ollama_generate}
 
 
 def main():
+    out = sys.stdout
     for raw in sys.stdin:
         raw = raw.strip()
         if not raw:
@@ -128,13 +181,20 @@ def main():
             req = json.loads(raw)
             rid = req.get("id")
             op = req.get("op")
-            if op not in OPS:
+            params = req.get("params") or {}
+            if op in STREAM_OPS:
+                def emit(tok, _rid=rid):
+                    out.write(json.dumps({"id": _rid, "chunk": tok}) + "\n")
+                    out.flush()
+                result = STREAM_OPS[op](params, emit)
+            elif op in OPS:
+                result = OPS[op](params)
+            else:
                 raise ValueError("unknown op: %s" % op)
-            result = OPS[op](req.get("params") or {})
-            sys.stdout.write(json.dumps({"id": rid, "ok": True, "result": result}) + "\n")
+            out.write(json.dumps({"id": rid, "ok": True, "result": result}) + "\n")
         except Exception as exc:  # readable error payload, never crash the loop
-            sys.stdout.write(json.dumps({"id": rid, "ok": False, "error": str(exc)}) + "\n")
-        sys.stdout.flush()
+            out.write(json.dumps({"id": rid, "ok": False, "error": str(exc)}) + "\n")
+        out.flush()
 
 
 if __name__ == "__main__":
