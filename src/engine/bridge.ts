@@ -18,6 +18,7 @@ interface Pending {
   resolve: (v: unknown) => void;
   reject: (e: Error) => void;
   timer: NodeJS.Timeout;
+  onChunk?: (chunk: string) => void;
 }
 
 /**
@@ -48,7 +49,7 @@ export class Engine {
   }
 
   private onLine(line: string): void {
-    let msg: { id?: number; ok?: boolean; result?: unknown; error?: string };
+    let msg: { id?: number; ok?: boolean; result?: unknown; error?: string; chunk?: string };
     try {
       msg = JSON.parse(line);
     } catch {
@@ -57,6 +58,11 @@ export class Engine {
     if (typeof msg.id !== "number") return;
     const p = this.pending.get(msg.id);
     if (!p) return;
+    // Streaming chunk: deliver and keep the request open until the final line.
+    if (typeof msg.chunk === "string") {
+      p.onChunk?.(msg.chunk);
+      return;
+    }
     this.pending.delete(msg.id);
     clearTimeout(p.timer);
     if (msg.ok) p.resolve(msg.result);
@@ -72,8 +78,13 @@ export class Engine {
     this.pending.clear();
   }
 
-  /** Send an op and await its structured result. */
-  send<T = unknown>(op: string, params: Record<string, unknown> = {}, timeoutMs = 15000): Promise<T> {
+  /** Send an op and await its result. Pass `onChunk` to receive streamed tokens. */
+  send<T = unknown>(
+    op: string,
+    params: Record<string, unknown> = {},
+    timeoutMs = 15000,
+    onChunk?: (chunk: string) => void,
+  ): Promise<T> {
     this.start();
     if (this.deadError) return Promise.reject(this.deadError);
     const id = this.nextId++;
@@ -82,7 +93,7 @@ export class Engine {
         this.pending.delete(id);
         reject(new Error(`engine timeout after ${timeoutMs}ms (${op})`));
       }, timeoutMs);
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer, onChunk });
       this.proc!.stdin.write(JSON.stringify({ id, op, params }) + "\n");
     });
   }
