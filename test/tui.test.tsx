@@ -32,25 +32,27 @@ async function until(fn: () => boolean, timeout = 4000): Promise<void> {
   throw new Error("condition not met in time");
 }
 
-describe("TUI App", () => {
-  it("renders the home after scanning and navigates into Recommend", async () => {
-    const { lastFrame, stdin } = render(<App />);
-    expect(lastFrame()).toMatch(/PEREZDEV|scanning/i);
-    await until(() => /Recommend for this project/.test(lastFrame() ?? ""));
-    expect(lastFrame()).toMatch(/Prompt local AI/);
-
-    // "Prompt local AI" is first; move down to "Recommend" (j), then select.
-    stdin.write("j");
-    await wait(80);
-    stdin.write("\r");
-    await until(() => /Recommended|fully set up/.test(lastFrame() ?? ""));
+describe("Console TUI", () => {
+  it("renders the bordered OpenDev console with header, badges, and stream", async () => {
+    const { lastFrame } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    const f = lastFrame() ?? "";
+    expect(f).toMatch(/PerezDev Hub v2\.0/);
+    expect(f).toMatch(/\[IDEs\]/);
+    expect(f).toMatch(/\[CLIs\]/);
+    expect(f).toMatch(/Autonomy: manual/);
   });
 
-  it("opens the local-AI chat console", async () => {
+  it("runs the /help slash command into the log stream", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /Prompt local AI/.test(lastFrame() ?? ""));
-    stdin.write("\r"); // first item is "Prompt local AI"
-    await until(() => /AUTOMATION STREAM/.test(lastFrame() ?? ""));
-    expect(lastFrame()).toMatch(/PerezDev Hub v2\.0/);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(1000); // let the engine/ollama detect settle
+    for (const ch of "/help") {
+      stdin.write(ch);
+      await wait(20);
+    }
+    await wait(150);
+    stdin.write("\r");
+    await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
   });
 });
