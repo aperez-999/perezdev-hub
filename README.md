@@ -24,13 +24,12 @@ Just run it. `perezdev` opens an animated fullscreen TUI that scans the current 
 perezdev
 ```
 
-Navigate with `↑↓`, `enter` to select, `esc` to go back, `q` to quit. Views:
+It opens a single **OpenDev-style console**: a bordered, animated screen with a matrix header, tool badges (IDEs / CLIs / Ollama), an `[AUTOMATION & LOG STREAM]`, a command input, and a live footer (`◆ model │ Autonomy │ Thinking │ ollama status`). You drive it by typing — no menu to arrow through. Everything you do appends to the log.
 
-- **Prompt local AI** — an OpenDev-style console that talks to your **local Ollama models** (nothing leaves your machine). Type a prompt and watch it stream into the automation log. `Shift+Tab` toggles Normal/Planning (routes to a reasoning model), `Ctrl+A` toggles Manual/Autonomous, `Ctrl+T` cycles thinking depth, `@file` injects a file's contents into the prompt, `/models` and `/help` are slash commands. The footer shows the active model, autonomy, and Ollama status.
-- **Recommend** — tailored, generated suggestions for *this* project, each with a reason. `space` to check, `enter` to install (watch them generate one by one).
-- **Describe** — type what you want ("review my React code for a11y") → an agent is generated and installed, in place.
-- **Manage** — `u` update · `b` bump · `x` remove.
-- **Browse** — install MCP servers, or grab a CLI agent's install command.
+- **Type a prompt** → it streams from your **local Ollama model** (nothing leaves your machine).
+- **`Shift+Tab`** Normal ↔ Planning (routes to a reasoning model) · **`Ctrl+A`** Manual ↔ Autonomous · **`Ctrl+T`** thinking depth.
+- **`@file`** in a prompt injects that file's contents as context.
+- **Slash commands:** `/recommend` · `/install <name>` · `/create <name>: <purpose>` · `/list` · `/map [dir]` · `/fix <file>` · `/models` · `/help` · `/quit`. In Manual autonomy, mutating actions wait for `/yes`.
 
 Prefer a plain list (no fullscreen)? `perezdev menu`. Or go straight to a command:
 
