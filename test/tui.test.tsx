@@ -45,4 +45,12 @@ describe("TUI App", () => {
     stdin.write("\r");
     await until(() => /Recommended|fully set up/.test(lastFrame() ?? ""));
   });
+
+  it("opens the local-AI chat console", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /Prompt local AI/.test(lastFrame() ?? ""));
+    stdin.write("\r"); // first item is "Prompt local AI"
+    await until(() => /AUTOMATION STREAM/.test(lastFrame() ?? ""));
+    expect(lastFrame()).toMatch(/PerezDev Hub v2\.0/);
+  });
 });
