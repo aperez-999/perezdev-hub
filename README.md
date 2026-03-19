@@ -26,6 +26,7 @@ perezdev
 
 Navigate with `↑↓`, `enter` to select, `esc` to go back, `q` to quit. Views:
 
+- **Prompt local AI** — an OpenDev-style console that talks to your **local Ollama models** (nothing leaves your machine). Type a prompt and watch it stream into the automation log. `Shift+Tab` toggles Normal/Planning (routes to a reasoning model), `Ctrl+A` toggles Manual/Autonomous, `Ctrl+T` cycles thinking depth, `@file` injects a file's contents into the prompt, `/models` and `/help` are slash commands. The footer shows the active model, autonomy, and Ollama status.
 - **Recommend** — tailored, generated suggestions for *this* project, each with a reason. `space` to check, `enter` to install (watch them generate one by one).
 - **Describe** — type what you want ("review my React code for a11y") → an agent is generated and installed, in place.
 - **Manage** — `u` update · `b` bump · `x` remove.
@@ -96,6 +97,16 @@ Some features run on a local Python 3 engine (stdlib only), spoken to over a JSO
 - **`perezdev map`** — a fast file-tree map of any directory.
 
 Both are also reachable from the TUI under **Map project tree** and **Diagnose a log file**. If `python3` is missing, the feature reports a readable error instead of failing — the rest of the app works regardless.
+
+The engine also powers the **Prompt local AI** console: it detects pulled models via `http://localhost:11434/api/tags` and streams completions from Ollama, routing to a fast code model in Normal mode and a reasoning model in Planning mode. To use it:
+
+```bash
+# install Ollama (https://ollama.com), then pull a couple of models:
+ollama pull qwen2.5-coder   # fast, code-optimized (Normal slot)
+ollama pull deepseek-r1     # reasoning (Planning slot)
+```
+
+If Ollama isn't installed/running, the console says so and the rest of the app is unaffected — everything local-first, no cloud calls.
 
 ## Safety
 
