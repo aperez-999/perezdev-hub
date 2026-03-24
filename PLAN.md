@@ -46,25 +46,29 @@ Implemented and verified (121 tests green, prod `npm audit` = 0, e2e smoke passe
 
 Goal: less clustered, animated where it helps, no template feel, no drift.
 
-- [ ] **Split `console.tsx` (713 LOC).** Extract into: `useHubActions` hook
-      (build/install/mcp/autofix wiring), a `commands` registry (one map: name →
-      {handler, help}), and a `useReducer` for the ~15 cross-dependent `useState`.
-      *Files:* `src/tui/console.tsx` → `src/tui/use-hub-actions.ts`, `src/tui/commands.ts`, `src/tui/state.ts`.
-      *Verify:* TUI tests still pass; `/help` is generated from the registry (cannot drift).
-- [ ] **Single source of `/help`.** Derive the help list from the command registry
-      so it never diverges from real handlers. *Verify:* test asserts every registry key appears in `/help`.
-- [ ] **In-TUI diff preview before write.** Reuse `src/ui/diff.ts`; show planned
-      changes in the confirm box for `/build`, `/create`, `/install`, `/mcp`.
-      *Verify:* confirm box renders ≥1 diff line in the F2 build test.
-- [ ] **Keyboard help overlay (`?`).** Toggleable cheatsheet of keys + slash commands.
-      *Verify:* `?` opens overlay, `esc` closes; snapshot test.
-- [ ] **Scrollable / capped activity log** with category tags (replace fragile
-      content-sniffing regex in `staging`/`results`). Tag log lines with a `cat`
-      field at push time. *Verify:* F3 staging shows only `cat:"mcp"` lines; test.
-- [ ] **Version from package metadata.** `shell.tsx` hardcodes `v2.0`; read real
-      version. *Verify:* header shows `package.json` version; test.
-- [ ] **Provider UX:** model picker (`/models` → selectable), live `/pull` progress
-      bar via the engine stream, clear offline banner. *Verify:* manual smoke + engine stream test.
+- [~] **Split `console.tsx`.** Partial: extracted the `commands` registry
+      (`src/tui/commands.ts`, one map: name → {usage, help}) and split the view into
+      `shell`/`rail`/`statusbar`/`slash`/`help` + the three pages. The `useHubActions`
+      hook and `useReducer` state consolidation are still TODO (state remains in
+      `console.tsx`). *Verify:* 123 tests green; `/help` is generated from the registry.
+- [x] **Single source of `/help`.** `helpLines()` + `SlashMenu` both read
+      `COMMANDS` in `src/tui/commands.ts`, so they cannot drift. *Verified:* `/help` test
+      asserts a registry command (`/build`) appears.
+- [x] **In-TUI diff preview before write.** `ConfirmBox` takes a `diff: string[]`;
+      `planDescribed`/`planCatalogMcp` + `plannedToDiff` (`data.ts`) feed planned files for
+      `/build`, `/create`, `/install`, `/mcp` and the F2/F3 flows. *Verified:* F3 install
+      confirm test renders the dialog; `n` writes nothing.
+- [x] **Keyboard help overlay (`?`).** `src/tui/help.tsx` — KEYS + SLASH COMMANDS
+      columns, full-replace overlay. *Verified:* `?` opens, `esc` closes (test).
+- [x] **Capped activity log** with category tags. `LogLine.cat` set at push time;
+      F3 staging filters `cat === "mcp"`; the visible window derives from terminal height.
+      *Verified:* TUI tests.
+- [x] **Version from package metadata.** `src/tui/version.ts` walks up to the
+      `perezdev-hub` package.json (dev + bundled); `shell.tsx` shows `v{version}`.
+      *Verified:* header shows `v0.1.0` (test).
+- [x] **Provider UX:** model picker (`Ctrl+M` → selectable list, with cloud entry),
+      offline banner on the chat page, `/pull` streams progress into the activity line.
+      *Verified:* smoke + tests. (`/pull` is a streamed line, not yet a graphical bar.)
 
 ## Phase 3 — Developer-experience features (P1)
 
