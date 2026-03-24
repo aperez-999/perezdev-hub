@@ -47,12 +47,26 @@ describe("Console TUI", () => {
     const { lastFrame, stdin } = render(<App />);
     await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
     await wait(1000); // let the engine/ollama detect settle
-    for (const ch of "/help") {
-      stdin.write(ch);
-      await wait(20);
-    }
-    await wait(150);
-    stdin.write("\r");
+    await typeLine(stdin, "/help");
     await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
   });
+
+  it("/build queues in manual mode and applies on /yes", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await wait(1300);
+    await typeLine(stdin, "/build review my code for bugs");
+    await wait(400);
+    await until(() => /Manual mode/.test(lastFrame() ?? ""), 6000);
+    await typeLine(stdin, "/yes");
+    await until(() => /built agent/.test(lastFrame() ?? ""), 10000);
+  }, 25000);
 });
+
+async function typeLine(stdin: { write: (s: string) => void }, s: string): Promise<void> {
+  for (const ch of s) {
+    stdin.write(ch);
+    await wait(15);
+  }
+  await wait(120);
+  stdin.write("\r");
+}
