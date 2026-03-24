@@ -124,10 +124,12 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         "  @file <prompt>      inject a file's contents as context",
         "  /models /list       local models · installed agents",
         "  /pull <model>       download a local model (live progress)",
+        "  /build <description> generate a custom agent + .md skill",
+        "  /mcp auto           discover & inject MCP servers for this repo",
         "  /recommend          generate suggestions for this project",
         "  /install <name>     install a suggestion (agent or mcp)",
         "  /create <name>: <purpose>",
-        "  /map [dir]  /fix <file>",
+        "  /tree [dir]  /diagnose <file>",
         "  /yes                apply a pending manual action",
         "  Ctrl+A autonomy · Ctrl+T thinking · /quit",
       ].forEach((l) => push("info", l));
@@ -192,7 +194,48 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         return `created agent ${name}`;
       });
     }
-    if (cmd === "map") {
+    if (cmd === "build") {
+      if (!arg) return push("err", "usage: /build <describe the agent>");
+      const name = slugify(arg);
+      return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
+        await installDescribed(name, arg, targets);
+        await refresh();
+        return `built agent ${name} (.md skill across ${targets.length} tool(s))`;
+      });
+    }
+    if (cmd === "mcp") {
+      const sub = rest[0] ?? "";
+      if (sub === "auto" || sub === "discover") {
+        const h = home ?? (await refresh());
+        const ids = new Set<string>();
+        if (h.scan.git) {
+          ids.add("git");
+          ids.add("github");
+        }
+        if (h.scan.databases.includes("postgres")) ids.add("postgres");
+        if (h.scan.databases.includes("sqlite")) ids.add("sqlite");
+        const servers = [...ids]
+          .map((id) => catalogMcp.find((m) => m.id === id))
+          .filter((s): s is NonNullable<typeof s> => !!s);
+        if (servers.length === 0) return push("info", "no MCP servers inferred for this workspace");
+        push("info", `discovered: ${servers.map((s) => s.id).join(", ")}`);
+        return guard(`inject ${servers.length} MCP server(s) → ${targets.join(", ")}`, async () => {
+          for (const s of servers) await installCatalogMcp(s, targets);
+          await refresh();
+          return `injected ${servers.map((s) => s.id).join(", ")}`;
+        });
+      }
+      const server = catalogMcp.find((m) => m.id === sub);
+      if (server) {
+        return guard(`install mcp ${server.id}`, async () => {
+          await installCatalogMcp(server, targets);
+          await refresh();
+          return `installed mcp ${server.id}`;
+        });
+      }
+      return push("err", "usage: /mcp auto  |  /mcp <id>");
+    }
+    if (cmd === "map" || cmd === "tree") {
       setBusy(true);
       try {
         const r = await engineMap(arg || ".", 2);
@@ -220,7 +263,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       setBusy(false);
       return;
     }
-    if (cmd === "fix") {
+    if (cmd === "fix" || cmd === "diagnose") {
       if (!arg) return push("err", "usage: /fix <logfile>");
       setBusy(true);
       try {
@@ -342,6 +385,19 @@ function Row({ line }: { line: LogLine }): React.ReactElement {
       {icon}
       <Text dimColor>{line.text}</Text>
     </Text>
+  );
+}
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .split("-")
+      .slice(0, 3)
+      .join("-")
+      .slice(0, 40) || "agent"
   );
 }
 
