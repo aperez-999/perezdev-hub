@@ -6,6 +6,8 @@ import TextInput from "ink-text-input";
 import { theme } from "./theme.js";
 import { Engine } from "../engine/bridge.js";
 import { detectOllama, promptModel, THINKING_SYSTEM, type OllamaStatus } from "../core/ollama.js";
+import { resolveProvider, providerHint } from "../core/provider.js";
+import { promptAnthropic, promptOpenAI } from "../core/cloud.js";
 import { readIfExists } from "../util/fs-safe.js";
 import {
   loadHome,
@@ -61,14 +63,16 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     void refresh();
     detectOllama(engineRef.current).then((s) => {
       setStatus(s);
-      if (s.available) push("ok", `Detected models: ${s.normal ?? "?"} (Normal), ${s.thinking ?? "?"} (Think)`);
-      else push("err", s.error || "Ollama not reachable");
+      const p = resolveProvider(s);
+      if (s.available && s.normal) push("ok", `Detected models: ${s.normal} (Normal), ${s.thinking ?? s.normal} (Think)`);
+      else if (p.kind === "cloud") push("ok", `No local models — using cloud: ${p.label}`);
+      else push("info", providerHint(p));
       push("info", "Type a prompt, or /help for commands.");
     });
     return () => engineRef.current?.close();
   }, []);
 
-  const model = mode === "plan" ? status?.thinking : status?.normal;
+  const provider = status ? resolveProvider(status, mode === "plan" ? "thinking" : "normal") : null;
   const targets = home?.targets ?? [];
 
   useInput((ch, key) => {
@@ -216,15 +220,23 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   }
 
   async function runPrompt(text: string): Promise<void> {
-    if (!model) return push("err", "no local model — start Ollama and pull one (e.g. qwen2.5-coder)");
+    if (!provider || provider.kind === "none") {
+      return push("err", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }));
+    }
     const prompt = await resolveContext(text);
+    const system = mode === "plan" ? THINKING_SYSTEM : undefined;
+    const onToken = (t: string) => setPartial((p) => p + t);
     setBusy(true);
     setPartial("");
     try {
-      const full = await promptModel(engineRef.current!, model, prompt, {
-        system: mode === "plan" ? THINKING_SYSTEM : undefined,
-        onToken: (t) => setPartial((p) => p + t),
-      });
+      let full: string;
+      if (provider.kind === "local") {
+        full = await promptModel(engineRef.current!, provider.model, prompt, { system, onToken });
+      } else if (provider.vendor === "anthropic") {
+        full = await promptAnthropic(provider.model, prompt, { system, onToken });
+      } else {
+        full = await promptOpenAI(provider.model, prompt, { system, onToken });
+      }
       push("ai", full.trim() || "(empty response)");
     } catch (err) {
       push("err", err instanceof Error ? err.message : String(err));
@@ -270,8 +282,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       </Box>
       <Text dimColor>{"─".repeat(74)}</Text>
       <Text>
-        <Text color={theme.accent}>◆ {model ?? "no-model"}</Text>
-        <Text dimColor>{`  │  Autonomy: ${autonomy}  │  Thinking: ${thinking}  │  ${status?.available ? "ollama up" : "ollama down"}`}</Text>
+        <Text color={theme.accent}>◆ {provider?.label ?? "no-model"}</Text>
+        <Text dimColor>{`  │  Autonomy: ${autonomy}  │  Thinking: ${thinking}  │  ${provider?.status ?? "..."}`}</Text>
       </Text>
     </Box>
   );
