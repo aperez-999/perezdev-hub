@@ -29,7 +29,9 @@ It opens a single **OpenDev-style console**: a bordered, animated screen with a 
 - **Type a prompt** → it streams from your **local Ollama model** (nothing leaves your machine).
 - **`Shift+Tab`** Normal ↔ Planning (routes to a reasoning model) · **`Ctrl+A`** Manual ↔ Autonomous · **`Ctrl+T`** thinking depth.
 - **`@file`** in a prompt injects that file's contents as context.
-- **Slash commands:** `/recommend` · `/install <name>` · `/create <name>: <purpose>` · `/list` · `/map [dir]` · `/fix <file>` · `/models` · `/help` · `/quit`. In Manual autonomy, mutating actions wait for `/yes`.
+- **Slash commands:** `/build <description>` (generate a custom agent + `.md` skill) · `/mcp auto` (discover & inject MCP servers for this repo) · `/pull <model>` (download a local model with live progress) · `/recommend` · `/install <name>` · `/create <name>: <purpose>` · `/list` · `/tree [dir]` · `/diagnose <file>` · `/models` · `/help` · `/quit`. In Manual autonomy, mutating actions wait for `/yes`.
+
+**Hybrid local/cloud:** PerezDev prefers your local Ollama models. If none are pulled but `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) is set, it transparently falls back to that cloud model and the footer shows `cloud active`. No Ollama and no key → a clear hint (not a raw error), and the rest of the app still works.
 
 Prefer a plain list (no fullscreen)? `perezdev menu`. Or go straight to a command:
 
