@@ -123,6 +123,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         "  <prompt>            ask the local model (Shift+Tab = planning)",
         "  @file <prompt>      inject a file's contents as context",
         "  /models /list       local models · installed agents",
+        "  /pull <model>       download a local model (live progress)",
         "  /recommend          generate suggestions for this project",
         "  /install <name>     install a suggestion (agent or mcp)",
         "  /create <name>: <purpose>",
@@ -199,6 +200,23 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       } catch (e) {
         push("err", e instanceof Error ? e.message : String(e));
       }
+      setBusy(false);
+      return;
+    }
+    if (cmd === "pull") {
+      if (!arg) return push("err", "usage: /pull <model>  (e.g. /pull qwen2.5-coder)");
+      setBusy(true);
+      setPartial("");
+      push("info", `pulling ${arg}...`);
+      try {
+        await engineRef.current!.send("ollama_pull", { model: arg }, 3_600_000, (t) => setPartial(t));
+        const s = await detectOllama(engineRef.current!);
+        setStatus(s);
+        push("ok", `pulled ${arg} — now available`);
+      } catch (e) {
+        push("err", e instanceof Error ? e.message : String(e));
+      }
+      setPartial("");
       setBusy(false);
       return;
     }

@@ -161,13 +161,48 @@ def ollama_generate(params, emit):
     return {"model": model, "response": "".join(parts)}
 
 
+def ollama_pull(params, emit):
+    """Pull a model from Ollama, streaming download progress percentages."""
+    model = params.get("model")
+    if not model:
+        raise ValueError("ollama_pull requires a model")
+    req = urllib.request.Request(
+        OLLAMA + "/api/pull",
+        data=json.dumps({"name": model, "stream": True}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    last = ""
+    try:
+        with urllib.request.urlopen(req, timeout=3600) as resp:
+            for line in resp:
+                line = line.strip()
+                if not line:
+                    continue
+                evt = json.loads(line.decode("utf-8"))
+                status = evt.get("status", "")
+                total, completed = evt.get("total"), evt.get("completed")
+                if total and completed:
+                    pct = int(completed * 100 / total)
+                    msg = "%s  %d%%" % (status, pct)
+                else:
+                    msg = status
+                if msg and msg != last:
+                    last = msg
+                    emit(msg)
+                if evt.get("error"):
+                    raise RuntimeError(evt["error"])
+    except urllib.error.URLError as exc:
+        raise RuntimeError("Ollama not reachable at %s (%s)" % (OLLAMA, exc.reason))
+    return {"model": model, "status": "ready"}
+
+
 OPS = {
     "ping": lambda p: {"pong": True, "python": sys.version.split()[0]},
     "diagnose": diagnose,
     "filetree": filetree,
     "ollama_tags": ollama_tags,
 }
-STREAM_OPS = {"ollama_generate": ollama_generate}
+STREAM_OPS = {"ollama_generate": ollama_generate, "ollama_pull": ollama_pull}
 
 
 def main():
