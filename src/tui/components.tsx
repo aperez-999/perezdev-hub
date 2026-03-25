@@ -1,44 +1,58 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "./theme.js";
-import type { HomeData } from "./data.js";
 
 export type Mode = "normal" | "plan";
 export type Autonomy = "manual" | "auto";
 export type Thinking = "low" | "medium" | "high";
 export type LogKind = "info" | "ok" | "err" | "user" | "ai";
+export type LogCat = "chat" | "mcp" | "build" | "fix";
 export interface LogLine {
   kind: LogKind;
   text: string;
+  /** Category for filtered views (e.g. F3 staging shows only cat:"mcp"). */
+  cat?: LogCat;
 }
 
 /** A consistent section heading: a colored accent bar + a soft label. */
-export function SectionHeader({ label }: { label: string }): React.ReactElement {
+export function SectionHeader({
+  label,
+  color = theme.accent,
+}: {
+  label: string;
+  color?: string;
+}): React.ReactElement {
   return (
     <Text>
-      <Text color={theme.accent}>{"▌ "}</Text>
-      <Text bold color={theme.accentBright}>{label}</Text>
+      <Text color={color}>{"▌ "}</Text>
+      <Text bold color={theme.fg2}>
+        {label.toUpperCase()}
+      </Text>
     </Text>
   );
 }
 
-/** One styled log line in the automation stream. */
+const GLYPH: Record<LogKind, [string, string]> = {
+  user: ["›", theme.violet],
+  ai: [" ", theme.fg],
+  ok: ["✔", theme.ok],
+  err: ["✘", theme.bad],
+  info: ["●", theme.accent],
+};
+
+/** One styled, category-aware log line in the automation stream. */
 export function Row({ line }: { line: LogLine }): React.ReactElement {
-  if (line.kind === "user") return <Text color={theme.accentBright}>{`› ${line.text}`}</Text>;
-  if (line.kind === "ai") return <Text>{`  ${line.text}`}</Text>;
-  const icon =
-    line.kind === "ok" ? (
-      <Text color={theme.ok}>✔ </Text>
-    ) : line.kind === "err" ? (
-      <Text color={theme.bad}>✘ </Text>
-    ) : (
-      <Text color={theme.accent}>● </Text>
-    );
+  const [glyph, color] = GLYPH[line.kind];
+  const bodyColor = line.kind === "user" ? theme.fg : line.kind === "ai" ? theme.fg : theme.fg2;
   return (
-    <Text>
-      {icon}
-      <Text dimColor>{line.text}</Text>
-    </Text>
+    <Box>
+      <Box width={2} flexShrink={0}>
+        <Text color={color}>{glyph}</Text>
+      </Box>
+      <Text color={bodyColor} bold={line.kind === "user"} wrap="wrap">
+        {line.text}
+      </Text>
+    </Box>
   );
 }
 
@@ -51,45 +65,39 @@ export interface PendingConfirm {
   resolve?: (ok: boolean) => void;
   /** MCP server ids to remember as "declined" if the user cancels this prompt. */
   ignore?: string[];
+  /** Planned-file diff lines (+ add / ~ change / - remove) shown before write. */
+  diff?: string[];
 }
 
-/** Inline manual-confirmation dialog rendered on any page (no chat bar needed). */
-export function ConfirmBox({ desc }: { desc: string }): React.ReactElement {
+/** Inline manual-confirmation dialog with an optional planned-file diff. */
+export function ConfirmBox({ desc, diff }: { desc: string; diff?: string[] }): React.ReactElement {
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.warn} paddingX={1} marginTop={1}>
-      <Text color={theme.warn} bold>⚠ MANUAL CONFIRMATION REQUIRED</Text>
-      <Text>{desc}?</Text>
-      <Text>
-        <Text color={theme.ok} bold>[Y] Approve</Text>
+      <Text color={theme.warn} bold>
+        ⚠ MANUAL CONFIRMATION REQUIRED
+      </Text>
+      <Text color={theme.fg}>{desc}?</Text>
+      {diff && diff.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          {diff.map((d, i) => {
+            const c = d[0] === "+" ? theme.ok : d[0] === "-" ? theme.bad : d[0] === "~" ? theme.warn : theme.fg2;
+            return (
+              <Text key={i} color={c}>
+                {d}
+              </Text>
+            );
+          })}
+        </Box>
+      )}
+      <Box marginTop={1}>
+        <Text color={theme.ok} bold>
+          [Y] Approve
+        </Text>
         <Text dimColor>{"  │  "}</Text>
-        <Text color={theme.bad} bold>[N] Cancel</Text>
-      </Text>
-    </Box>
-  );
-}
-
-/** IDE / CLI / Ollama detection badges plus the project signal line.
- *  Reflects the real machine footprint from the live ecosystem scan. */
-export function Badges({ home, ollama }: { home: HomeData | null; ollama: boolean }): React.ReactElement {
-  const eco = home?.ecosystem ?? [];
-  const ide = eco.filter((t) => t.kind === "ide");
-  const cli = eco.filter((t) => t.kind === "cli");
-  const dot = (on: boolean) => (on ? theme.ok : theme.muted);
-  const badge = (id: string, on: boolean) => (
-    <Text key={id} color={dot(on)}>{`${on ? "●" : "○"} ${id}  `}</Text>
-  );
-  return (
-    <Box flexDirection="column">
-      <Text>
-        <Text dimColor>[IDEs] </Text>
-        {ide.map((t) => badge(t.label, t.present))}
-      </Text>
-      <Text>
-        <Text dimColor>[CLIs] </Text>
-        {cli.map((t) => badge(t.label, t.present))}
-        <Text color={dot(ollama)}>{`${ollama ? "●" : "○"} ollama (local)`}</Text>
-      </Text>
-      <Text dimColor>{`project: ${home?.scan.signals.join(" · ") || "—"}`}</Text>
+        <Text color={theme.bad} bold>
+          [N] Cancel
+        </Text>
+      </Box>
     </Box>
   );
 }

@@ -1,64 +1,82 @@
 import React from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Badges, Row, SectionHeader, type LogLine, type Mode } from "../components.js";
-import type { HomeData } from "../data.js";
-import type { OllamaStatus } from "../../core/ollama.js";
+import { Row, SectionHeader, type LogLine, type Mode } from "../components.js";
+import { SlashMenu } from "../slash.js";
 
-/** Page 1 — the chat engine: ecosystem map, log stream, and the input capsule. */
+/** Page 1 — the chat engine: category log, offline banner, slash menu, capsule.
+ *  Detection badges now live in the persistent rail (see rail.tsx). */
 export function ChatPage({
-  home,
-  status,
   log,
   busy,
   partial,
   mode,
+  online,
   input,
   setInput,
   submit,
   inputActive,
+  slashOpen,
+  slashSel,
 }: {
-  home: HomeData | null;
-  status: OllamaStatus | null;
   log: LogLine[];
   busy: boolean;
   partial: string;
   mode: Mode;
+  online: boolean;
   input: string;
   setInput: (s: string) => void;
   submit: (s: string) => void;
   inputActive: boolean;
+  slashOpen: boolean;
+  slashSel: number;
 }): React.ReactElement {
-  const recent = log.slice(-11);
-  return (
-    <Box flexDirection="column">
-      <Badges home={home} ollama={status?.available ?? false} />
+  const { stdout } = useStdout();
+  // Derive the visible log height from the terminal instead of a magic number.
+  const rows = Math.max(6, Math.min((stdout?.rows ?? 40) - 16, 24));
+  const recent = log.slice(-rows);
+  const focused = inputActive || slashOpen;
 
-      <Box flexDirection="column" marginTop={1} height={12}>
-        <SectionHeader label="activity" />
+  return (
+    <Box flexDirection="column" flexGrow={1}>
+      <SectionHeader label="chat engine" />
+
+      <Box flexDirection="column" flexGrow={1} marginTop={1}>
         {recent.map((l, i) => (
           <Row key={i} line={l} />
         ))}
         {busy && (
-          <Text>
+          <Box>
             <Text color={theme.accent}>
               <Spinner type="dots" />
-            </Text>{" "}
-            <Text dimColor>{partial.slice(-200) || "working..."}</Text>
-          </Text>
+            </Text>
+            <Text color={theme.fg2}>{" " + (partial.slice(-240) || "working…")}</Text>
+          </Box>
         )}
       </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor={inputActive ? theme.accent : theme.muted} paddingX={1}>
-        <Text color={mode === "plan" ? theme.warn : theme.accentBright}>{mode === "plan" ? "plan › " : "› "}</Text>
+      {!online && (
+        <Box borderStyle="round" borderColor={theme.warn} paddingX={1} marginX={2} marginTop={1}>
+          <Text color={theme.warn}>⚠ No model. Run </Text>
+          <Text color={theme.warn} bold>
+            ollama pull qwen2.5-coder
+          </Text>
+          <Text color={theme.warn}> or set ANTHROPIC_API_KEY.</Text>
+        </Box>
+      )}
+
+      {slashOpen && <SlashMenu query={input} sel={slashSel} />}
+
+      <Box marginTop={1} borderStyle="round" borderColor={focused ? theme.accent : theme.line} paddingX={1}>
+        <Text color={mode === "plan" ? theme.violet : theme.accent}>{mode === "plan" ? "plan › " : "› "}</Text>
         <TextInput
           value={input}
           onChange={setInput}
           onSubmit={submit}
           focus={inputActive}
-          placeholder="type a prompt or /command..."
+          placeholder="type a prompt or /command…"
         />
       </Box>
     </Box>

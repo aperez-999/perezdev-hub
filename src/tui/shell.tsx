@@ -1,8 +1,11 @@
 import React from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useStdout } from "ink";
 import Gradient from "ink-gradient";
-import { theme } from "./theme.js";
-import type { Autonomy, Thinking } from "./components.js";
+import { theme, LOGO_GRADIENT, RAIL_W } from "./theme.js";
+import { EnvRail, type Routing } from "./rail.js";
+import { StatusBar, type StatusProps } from "./statusbar.js";
+import type { HomeData } from "./data.js";
+import { version as VERSION } from "./version.js";
 
 export type Page = 1 | 2 | 3;
 
@@ -11,83 +14,76 @@ const TABS: { page: Page; key: string; label: string }[] = [
   { page: 2, key: "F2", label: "Skill Builder" },
   { page: 3, key: "F3", label: "MCP Manager" },
 ];
-const RULE = "─".repeat(74);
 
-/** Outer chrome: matrix header, tab bar, page body, key hints, and the live footer. */
+/** Three-zone shell: header (logo · tabs · model) / body (rail + page) / status bar. */
 export function Shell({
   page,
-  hint,
+  home,
+  online,
+  ollama,
+  routing,
   footer,
-  confirm,
   children,
-  gradient,
 }: {
   page: Page;
-  hint?: string;
-  footer: React.ReactNode;
-  confirm?: React.ReactNode;
+  home: HomeData | null;
+  online: boolean;
+  ollama: boolean;
+  routing: Routing;
+  footer: StatusProps;
   children: React.ReactNode;
-  gradient: string;
 }): React.ReactElement {
+  const { stdout } = useStdout();
+  // Constrain width only when the real terminal width is known; in headless
+  // renders (tests) leave it natural so content lays out without hard wrapping.
+  const cols = stdout?.columns ? Math.min(stdout.columns, 132) : undefined;
+
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={2} paddingY={1} width={80}>
-      <Text>
-        <Gradient name={gradient as never}>
-          <Text bold>PerezDev Hub</Text>
-        </Gradient>
-        <Text dimColor>{" v2.0"}</Text>
-      </Text>
-
-      <Box marginTop={1}>
-        {TABS.map((t, i) => {
-          const on = page === t.page;
-          return (
-            <Text key={t.page}>
-              {i > 0 ? <Text dimColor>{"  "}</Text> : null}
-              {on ? (
-                <Text backgroundColor={theme.accent} color="black" bold>{` ${t.key} ${t.label} `}</Text>
-              ) : (
-                <Text dimColor>{` ${t.key} ${t.label} `}</Text>
-              )}
-            </Text>
-          );
-        })}
-      </Box>
-      <Text dimColor>{RULE}</Text>
-
-      <Box flexDirection="column" marginY={1}>
-        {children}
-        {confirm}
-      </Box>
-
-      <Text dimColor>{RULE}</Text>
-      {hint ? (
-        <Box marginTop={1}>
-          <Text color={theme.muted}>{"  keys  "}</Text>
-          <Text dimColor>{hint}</Text>
+    <Box flexDirection="column" width={cols}>
+      {/* ── header ── */}
+      <Box paddingX={2} borderStyle="round" borderColor={theme.line}>
+        <Box flexGrow={0}>
+          <Text color={theme.accent}>◤ </Text>
+          <Gradient colors={LOGO_GRADIENT}>
+            <Text bold>PEREZDEV HUB</Text>
+          </Gradient>
+          <Text color={theme.muted}>{`  v${VERSION}`}</Text>
         </Box>
-      ) : null}
-      <Box marginTop={1}>{footer}</Box>
-    </Box>
-  );
-}
+        <Box flexGrow={1} justifyContent="center">
+          {TABS.map((t, i) => {
+            const on = page === t.page;
+            return (
+              <Box key={t.page} marginLeft={i ? 1 : 0}>
+                {on ? (
+                  <Text backgroundColor={theme.accent} color={theme.ink} bold>{` ${t.key} ${t.label} `}</Text>
+                ) : (
+                  <Text color={theme.muted}>{` ${t.key} ${t.label} `}</Text>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+        <Box flexGrow={0}>
+          <Text color={online ? theme.ok : theme.muted}>● </Text>
+          <Text color={theme.fg2}>{online ? "local " : "offline "}</Text>
+          <Text color={theme.violet} bold>
+            {footer.model}
+          </Text>
+        </Box>
+      </Box>
 
-/** Footer metadata bar shared across pages. */
-export function Footer({
-  label,
-  status,
-  autonomy,
-  thinking,
-}: {
-  label: string;
-  status: string;
-  autonomy: Autonomy;
-  thinking: Thinking;
-}): React.ReactElement {
-  return (
-    <Text>
-      <Text color={theme.accent}>{`◆ ${label}`}</Text>
-      <Text dimColor>{`   autonomy ${autonomy}   ·   thinking ${thinking}   ·   ${status}`}</Text>
-    </Text>
+      {/* ── body: rail + main ── */}
+      <Box>
+        <Box width={RAIL_W} flexShrink={0}>
+          <EnvRail home={home} ollama={ollama} routing={routing} />
+        </Box>
+        <Box flexGrow={1} flexDirection="column" paddingX={1}>
+          {children}
+        </Box>
+      </Box>
+
+      {/* ── status bar ── */}
+      <StatusBar {...footer} />
+    </Box>
   );
 }
