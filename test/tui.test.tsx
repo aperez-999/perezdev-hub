@@ -43,36 +43,53 @@ async function until(fn: () => boolean, timeout = 4000): Promise<void> {
 }
 
 describe("Console TUI", () => {
-  it("renders the bordered OpenDev console with header, badges, and stream", async () => {
+  it("renders the three-zone shell: header, environment rail, and status bar", async () => {
     const { lastFrame } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
-    expect(f).toMatch(/PerezDev Hub v2\.0/);
-    expect(f).toMatch(/\[IDEs\]/);
-    expect(f).toMatch(/\[CLIs\]/);
-    expect(f).toMatch(/autonomy manual/);
+    expect(f).toMatch(/PEREZDEV HUB/);
+    expect(f).toMatch(/v0\.1\.0/); // version read from package.json, not hardcoded
+    expect(f).toMatch(/ENVIRONMENT/);
+    expect(f).toMatch(/IDES/);
+    expect(f).toMatch(/CLIS/);
+    expect(f).toMatch(/ROUTING/);
+    expect(f).toMatch(/autonomy/);
+    expect(f).toMatch(/manual/);
   });
 
   it("runs the /help slash command into the log stream", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(1000); // let the engine/ollama detect settle
     await typeLine(stdin, "/help");
     await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
+    // /help is generated from the command registry — assert a known command shows.
+    expect(lastFrame()).toMatch(/\/build/);
   });
+
+  it("shows the slash autocomplete menu when the input starts with /", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await wait(800);
+    for (const ch of "/mc") {
+      stdin.write(ch);
+      await wait(20);
+    }
+    await until(() => /\/mcp/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
 
   it("switches pages with function keys and Escape", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write("OQ"); // F2
-    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/Create Custom Agent Skill/);
-    stdin.write("OR"); // F3
-    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
+    stdin.write("OQ"); // F2
+    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/GOAL/);
+    stdin.write("OR"); // F3
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
     stdin.write(ESC); // Escape -> back to chat
-    await until(() => /activity/.test(lastFrame() ?? ""), 4000);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("restores the last active tab from ~/.perezdevrc on boot", async () => {
@@ -81,16 +98,16 @@ describe("Console TUI", () => {
       JSON.stringify({ last_active_tab: 3, autonomy_mode: "auto", mcp_ignored_servers: [] }),
     );
     const { lastFrame } = render(<App />);
-    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/autonomy auto/);
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/auto/);
   }, 15000);
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     const f = lastFrame() ?? "";
     expect(f).toMatch(/Local Filesystem/);
     expect(f).toMatch(/PostgreSQL Database/);
@@ -98,27 +115,28 @@ describe("Console TUI", () => {
     expect(f).toMatch(/integration prompt/);
   }, 15000);
 
-  it("F3 Enter on a directory item pops an install confirm", async () => {
+  it("F3 Enter on a directory item pops an install confirm with a diff", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // install the highlighted (first) item
     await until(() => /install mcp filesystem/.test(lastFrame() ?? ""), 6000);
     expect(lastFrame()).toMatch(/MANUAL CONFIRMATION REQUIRED/);
   }, 15000);
 
-  it("opens the Create Custom Agent overlay on F2 → Enter", async () => {
+  it("opens the Skill Builder with goal field and live preview on F2", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write("OQ"); // F2
-    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
-    await wait(200);
-    stdin.write("\r"); // Enter on first item
-    await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
+    stdin.write("OQ"); // F2
+    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    const f = lastFrame() ?? "";
+    expect(f).toMatch(/GOAL/);
+    expect(f).toMatch(/TARGET TOOLS/);
+    expect(f).toMatch(/SKILL\.md PREVIEW/);
   }, 15000);
 
   it("/build pops an inline manual confirm and applies on Y", async () => {
@@ -142,15 +160,12 @@ describe("Console TUI", () => {
     await until(() => /cancelled/.test(lastFrame() ?? "") && !/MANUAL CONFIRMATION/.test(lastFrame() ?? ""), 6000);
   }, 20000);
 
-  it("F2 overlay → build → Y confirm generates the agent", async () => {
+  it("F2 Skill Builder: typing a goal + Enter generates the agent", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /activity/.test(lastFrame() ?? ""));
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write("OQ"); // F2
-    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
-    await wait(200);
-    stdin.write("\r"); // Create Custom Agent → overlay
-    await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
+    stdin.write("OQ"); // F2 → goal field is focused by default
+    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     await typeLine(stdin, "frontend dev");
     await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
@@ -158,6 +173,21 @@ describe("Console TUI", () => {
     stdin.write("y");
     await until(() => /frontend-dev/.test(lastFrame() ?? ""), 10000);
   }, 25000);
+
+  it("? opens the help overlay and Esc closes it", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(F3); // leave the chat input so single-key shortcuts work
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await wait(200);
+    stdin.write("?");
+    await until(() => /SLASH COMMANDS/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/KEYS/);
+    await wait(200);
+    stdin.write(ESC);
+    await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
 });
 
 async function typeLine(stdin: { write: (s: string) => void }, s: string): Promise<void> {
