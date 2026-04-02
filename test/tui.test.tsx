@@ -51,6 +51,31 @@ describe("Console TUI", () => {
     await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
   });
 
+  it("switches pages with function keys and Escape", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write("OQ"); // F2
+    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/Create Custom Agent Skill/);
+    stdin.write("OR"); // F3
+    await until(() => /SYSTEM CONNECTION MATRIX/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/Run Discovery Scanner/);
+    stdin.write(""); // Escape -> back to chat
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
+
+  it("opens the Create Custom Agent overlay on F2 → Enter", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write("OQ"); // F2
+    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    await wait(200);
+    stdin.write("\r"); // Enter on first item
+    await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
+
   it("/build queues in manual mode and applies on /yes", async () => {
     const { lastFrame, stdin } = render(<App />);
     await wait(1300);
