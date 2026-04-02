@@ -24,7 +24,13 @@ Just run it. `perezdev` opens an animated fullscreen TUI that scans the current 
 perezdev
 ```
 
-It opens a single **OpenDev-style console**: a bordered, animated screen with a matrix header, tool badges (IDEs / CLIs / Ollama), an `[AUTOMATION & LOG STREAM]`, a command input, and a live footer (`◆ model │ Autonomy │ Thinking │ ollama status`). You drive it by typing — no menu to arrow through. Everything you do appends to the log.
+It opens a single **OpenDev-style console**: a bordered, animated screen with a matrix header, a **tabbed page bar**, tool badges (IDEs / CLIs / Ollama), an `[AUTOMATION & LOG STREAM]`, a command input, and a live footer (`◆ model │ Autonomy │ Thinking │ ollama status`). You drive it by typing — no menu to arrow through. Everything you do appends to the log.
+
+Three pages, switched with the function keys (or `1`/`2`/`3` off the chat page); `Esc` returns to chat:
+
+- **`F1` 🤖 Chat Engine** — the prompt console + ecosystem map + log stream.
+- **`F2` ⚙ Skill Builder** — an arrow-navigable factory: *Create Custom Agent* (inline `Agent Goal:` overlay → runs the `/build` engine), *Run Workspace Diagnoser* (`Log file:` overlay → trace-regex tool), *View Project Skills* (lists installed `.md`/`.mdc` rules).
+- **`F3` 🔌 MCP Manager** — connection matrix (GitHub / Atlassian), a `[ Run Discovery Scanner ]` button (`Enter` runs `/mcp auto`), and a live staging stream of MCP writes.
 
 - **Type a prompt** → it streams from your **local Ollama model** (nothing leaves your machine).
 - **`Shift+Tab`** Normal ↔ Planning (routes to a reasoning model) · **`Ctrl+A`** Manual ↔ Autonomous · **`Ctrl+T`** thinking depth.
