@@ -1,9 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Text, useApp, useInput } from "ink";
-import Gradient from "ink-gradient";
-import Spinner from "ink-spinner";
-import TextInput from "ink-text-input";
-import { theme } from "./theme.js";
+import { useApp, useInput, useStdin } from "ink";
 import { Engine } from "../engine/bridge.js";
 import { detectOllama, promptModel, THINKING_SYSTEM, type OllamaStatus } from "../core/ollama.js";
 import { resolveProvider, providerHint } from "../core/provider.js";
@@ -20,23 +16,36 @@ import {
   type HomeData,
 } from "./data.js";
 import { slugSchema } from "../core/agent-spec.js";
+import {
+  type Autonomy,
+  type LogKind,
+  type LogLine,
+  type Mode,
+  type Thinking,
+} from "./components.js";
+import { Shell, Footer, type Page } from "./shell.js";
+import { ChatPage } from "./pages/chat.js";
+import { FactoryPage, FACTORY_ITEMS } from "./pages/factory.js";
+import { McpPage } from "./pages/mcp.js";
 
-type Mode = "normal" | "plan";
-type Autonomy = "manual" | "auto";
-type Thinking = "low" | "medium" | "high";
-type LogKind = "info" | "ok" | "err" | "user" | "ai";
-interface LogLine {
-  kind: LogKind;
-  text: string;
+interface Overlay {
+  kind: "build" | "diagnose";
+  prompt: string;
+  value: string;
 }
 
-const DRULE = "═".repeat(24);
-const HEADER = ["  .  :  .:::..  .:::", " . ... :::: ..:::::", " P E R E Z D E V   H U B", " : . :::::...  ::.", "  ..  ..  ...   ."];
-const CLI_IDS = new Set(["claude-code", "codex"]);
+/** Function-key escape sequences Ink's useInput swallows; parsed off raw stdin. */
+function fkey(data: string): Page | null {
+  if (data === "OP" || data === "[11~" || data === "[[A") return 1;
+  if (data === "OQ" || data === "[12~" || data === "[[B") return 2;
+  if (data === "OR" || data === "[13~" || data === "[[C") return 3;
+  return null;
+}
 
-/** The whole UI: a bordered OpenDev-style console with a command loop. */
+/** The whole UI: tabbed OpenDev-style console (Chat · Skill Builder · MCP). */
 export function Console({ gradient }: { gradient: string }): React.ReactElement {
   const { exit } = useApp();
+  const { stdin } = useStdin();
   const engineRef = useRef<Engine | null>(null);
   const [home, setHome] = useState<HomeData | null>(null);
   const [status, setStatus] = useState<OllamaStatus | null>(null);
@@ -47,6 +56,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const [mode, setMode] = useState<Mode>("normal");
   const [autonomy, setAutonomy] = useState<Autonomy>("manual");
   const [thinking, setThinking] = useState<Thinking>("medium");
+  const [page, setPage] = useState<Page>(1);
+  const [sel2, setSel2] = useState(0);
+  const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const [skills, setSkills] = useState<string[] | null>(null);
   const pending = useRef<{ desc: string; run: () => Promise<string> } | null>(null);
 
   const push = (kind: LogKind, text: string) => setLog((l) => [...l, { kind, text }].slice(-200));
@@ -67,19 +80,59 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       if (s.available && s.normal) push("ok", `Detected models: ${s.normal} (Normal), ${s.thinking ?? s.normal} (Think)`);
       else if (p.kind === "cloud") push("ok", `No local models — using cloud: ${p.label}`);
       else push("info", providerHint(p));
-      push("info", "Type a prompt, or /help for commands.");
+      push("info", "Type a prompt, or /help for commands.  F1-F3 switch pages.");
     });
     return () => engineRef.current?.close();
   }, []);
 
+  // Function keys are stripped by Ink's useInput, so route them off raw stdin.
+  useEffect(() => {
+    if (!stdin) return;
+    const onData = (d: Buffer | string) => {
+      const p = fkey(typeof d === "string" ? d : d.toString("utf8"));
+      if (p) goto(p);
+    };
+    stdin.on("data", onData);
+    return () => {
+      stdin.off("data", onData);
+    };
+  }, [stdin]);
+
   const provider = status ? resolveProvider(status, mode === "plan" ? "thinking" : "normal") : null;
   const targets = home?.targets ?? [];
 
+  function goto(p: Page): void {
+    setOverlay(null);
+    setSkills(null);
+    setPage(p);
+  }
+
   useInput((ch, key) => {
+    // Global toggles work on every page, even mid-task.
+    if (key.tab && key.shift) return setMode((m) => (m === "normal" ? "plan" : "normal"));
+    if (key.ctrl && ch === "a") return setAutonomy((a) => (a === "manual" ? "auto" : "manual"));
+    if (key.ctrl && ch === "t") return setThinking((t) => (t === "low" ? "medium" : t === "medium" ? "high" : "low"));
+
+    if (key.escape) {
+      if (overlay) return setOverlay(null);
+      if (skills) return setSkills(null);
+      return goto(1);
+    }
     if (busy) return;
-    if (key.tab && key.shift) setMode((m) => (m === "normal" ? "plan" : "normal"));
-    else if (key.ctrl && ch === "a") setAutonomy((a) => (a === "manual" ? "auto" : "manual"));
-    else if (key.ctrl && ch === "t") setThinking((t) => (t === "low" ? "medium" : t === "medium" ? "high" : "low"));
+
+    // Digit page-switch only off the chat page (page 1 keeps digits for typing).
+    if (page !== 1 && !overlay && (ch === "1" || ch === "2" || ch === "3")) {
+      return goto(Number(ch) as Page);
+    }
+
+    if (page === 2 && !overlay) {
+      if (key.upArrow) return setSel2((s) => (s + FACTORY_ITEMS.length - 1) % FACTORY_ITEMS.length);
+      if (key.downArrow) return setSel2((s) => (s + 1) % FACTORY_ITEMS.length);
+      if (key.return) return activateFactory(sel2);
+    }
+    if (page === 3 && !overlay && key.return) {
+      return discoverMcp();
+    }
   });
 
   /** Run a mutating action now (auto) or queue it for /yes (manual). */
@@ -103,6 +156,69 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
   }
 
+  function buildAgent(desc: string): Promise<void> {
+    const name = slugify(desc);
+    return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
+      await installDescribed(name, desc, targets);
+      await refresh();
+      return `built agent ${name} (.md skill across ${targets.length} tool(s))`;
+    });
+  }
+
+  async function diagnose(file: string): Promise<void> {
+    setBusy(true);
+    try {
+      const d = await engineDiagnose(file);
+      push("err", `${d.kind}: ${d.message}`);
+      push("ok", `→ ${d.hint}`);
+      d.frames.forEach((f) => push("info", `  ${f.file}:${f.line}`));
+    } catch (e) {
+      push("err", e instanceof Error ? e.message : String(e));
+    }
+    setBusy(false);
+  }
+
+  async function discoverMcp(): Promise<void> {
+    const h = home ?? (await refresh());
+    const ids = new Set<string>();
+    if (h.scan.git) {
+      ids.add("git");
+      ids.add("github");
+    }
+    if (h.scan.databases.includes("postgres")) ids.add("postgres");
+    if (h.scan.databases.includes("sqlite")) ids.add("sqlite");
+    const servers = [...ids]
+      .map((id) => catalogMcp.find((m) => m.id === id))
+      .filter((s): s is NonNullable<typeof s> => !!s);
+    if (servers.length === 0) return push("info", "no MCP servers inferred for this workspace");
+    push("info", `discovered: ${servers.map((s) => s.id).join(", ")}`);
+    return guard(`inject ${servers.length} MCP server(s) → ${targets.join(", ")}`, async () => {
+      for (const s of servers) await installCatalogMcp(s, targets);
+      await refresh();
+      return `injected ${servers.map((s) => s.id).join(", ")}`;
+    });
+  }
+
+  function activateFactory(index: number): void {
+    if (index === 0) return setOverlay({ kind: "build", prompt: "Agent Goal:", value: "" });
+    if (index === 1) return setOverlay({ kind: "diagnose", prompt: "Log file:", value: "" });
+    const h = home;
+    const list = [
+      ...(h?.agents ?? []).map((a) => `${a.name}  (${a.targets.join("/")} · v${a.version})`),
+      ...(h?.mcp ?? []).map((m) => `mcp:${m.id}  (${m.targets.join("/")})`),
+    ];
+    setSkills(list);
+  }
+
+  function onOverlaySubmit(value: string): void {
+    const o = overlay;
+    setOverlay(null);
+    const v = value.trim();
+    if (!o || !v) return;
+    if (o.kind === "build") void buildAgent(v);
+    else void diagnose(v);
+  }
+
   async function submit(raw: string): Promise<void> {
     const text = raw.trim();
     setInput("");
@@ -120,18 +236,13 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     if (cmd === "help") {
       [
         "commands:",
-        "  <prompt>            ask the local model (Shift+Tab = planning)",
-        "  @file <prompt>      inject a file's contents as context",
-        "  /models /list       local models · installed agents",
-        "  /pull <model>       download a local model (live progress)",
-        "  /build <description> generate a custom agent + .md skill",
-        "  /mcp auto           discover & inject MCP servers for this repo",
-        "  /recommend          generate suggestions for this project",
-        "  /install <name>     install a suggestion (agent or mcp)",
-        "  /create <name>: <purpose>",
-        "  /tree [dir]  /diagnose <file>",
-        "  /yes                apply a pending manual action",
-        "  Ctrl+A autonomy · Ctrl+T thinking · /quit",
+        "  <prompt>        ask the local model (Shift+Tab = planning)",
+        "  @file <prompt>  inject a file's contents as context",
+        "  F1/F2/F3        chat · skill builder · mcp manager pages",
+        "  /build <desc>   /create <name>: <purpose>",
+        "  /mcp auto · /pull <model> · /tree [dir] · /diagnose <file>",
+        "  /recommend · /install <name> · /models · /list",
+        "  /yes apply pending · Ctrl+A autonomy · Ctrl+T thinking · /quit",
       ].forEach((l) => push("info", l));
       return;
     }
@@ -196,35 +307,11 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
     if (cmd === "build") {
       if (!arg) return push("err", "usage: /build <describe the agent>");
-      const name = slugify(arg);
-      return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
-        await installDescribed(name, arg, targets);
-        await refresh();
-        return `built agent ${name} (.md skill across ${targets.length} tool(s))`;
-      });
+      return buildAgent(arg);
     }
     if (cmd === "mcp") {
       const sub = rest[0] ?? "";
-      if (sub === "auto" || sub === "discover") {
-        const h = home ?? (await refresh());
-        const ids = new Set<string>();
-        if (h.scan.git) {
-          ids.add("git");
-          ids.add("github");
-        }
-        if (h.scan.databases.includes("postgres")) ids.add("postgres");
-        if (h.scan.databases.includes("sqlite")) ids.add("sqlite");
-        const servers = [...ids]
-          .map((id) => catalogMcp.find((m) => m.id === id))
-          .filter((s): s is NonNullable<typeof s> => !!s);
-        if (servers.length === 0) return push("info", "no MCP servers inferred for this workspace");
-        push("info", `discovered: ${servers.map((s) => s.id).join(", ")}`);
-        return guard(`inject ${servers.length} MCP server(s) → ${targets.join(", ")}`, async () => {
-          for (const s of servers) await installCatalogMcp(s, targets);
-          await refresh();
-          return `injected ${servers.map((s) => s.id).join(", ")}`;
-        });
-      }
+      if (sub === "auto" || sub === "discover") return discoverMcp();
       const server = catalogMcp.find((m) => m.id === sub);
       if (server) {
         return guard(`install mcp ${server.id}`, async () => {
@@ -265,17 +352,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
     if (cmd === "fix" || cmd === "diagnose") {
       if (!arg) return push("err", "usage: /fix <logfile>");
-      setBusy(true);
-      try {
-        const d = await engineDiagnose(arg);
-        push("err", `${d.kind}: ${d.message}`);
-        push("ok", `→ ${d.hint}`);
-        d.frames.forEach((f) => push("info", `  ${f.file}:${f.line}`));
-      } catch (e) {
-        push("err", e instanceof Error ? e.message : String(e));
-      }
-      setBusy(false);
-      return;
+      return diagnose(arg);
     }
     push("err", `unknown command: /${cmd}  (try /help)`);
   }
@@ -307,84 +384,37 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
   }
 
-  const recent = log.slice(-13);
-  return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={1} width={78}>
-      <Gradient name={gradient as never}>
-        <Text>{HEADER.join("\n")}</Text>
-      </Gradient>
-      <Text color={theme.accent}>{`${DRULE} PerezDev Hub v2.0 ${DRULE}`}</Text>
-      <Text dimColor>/help · /models · Shift+Tab plan mode · @file context</Text>
-      <Text dimColor>{"─".repeat(74)}</Text>
-
-      <Badges home={home} ollama={status?.available ?? false} />
-
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold color={theme.accent}>[AUTOMATION &amp; LOG STREAM]</Text>
-        {recent.map((l, i) => (
-          <Row key={i} line={l} />
-        ))}
-        {busy && (
-          <Text>
-            <Text color={theme.accent}>
-              <Spinner type="dots" />
-            </Text>{" "}
-            <Text dimColor>{partial.slice(-200) || "working..."}</Text>
-          </Text>
-        )}
-      </Box>
-
-      <Text color={mode === "plan" ? theme.warn : theme.muted}>
-        {`─── ${mode === "plan" ? "Planning" : "Normal"} Mode (Shift+Tab) `}{"─".repeat(40)}
-      </Text>
-      <Box>
-        <Text color={theme.accentBright}>{"› "}</Text>
-        <TextInput value={input} onChange={setInput} onSubmit={submit} placeholder="type a prompt or /command..." />
-      </Box>
-      <Text dimColor>{"─".repeat(74)}</Text>
-      <Text>
-        <Text color={theme.accent}>◆ {provider?.label ?? "no-model"}</Text>
-        <Text dimColor>{`  │  Autonomy: ${autonomy}  │  Thinking: ${thinking}  │  ${provider?.status ?? "..."}`}</Text>
-      </Text>
-    </Box>
+  const staging = log.filter((l) => /mcp|inject|discover|server|github/i.test(l.text));
+  const footer = (
+    <Footer label={provider?.label ?? "no-model"} status={provider?.status ?? "..."} autonomy={autonomy} thinking={thinking} />
   );
-}
-
-function Badges({ home, ollama }: { home: HomeData | null; ollama: boolean }): React.ReactElement {
-  const tools = home?.tools ?? [];
-  const ide = tools.filter((t) => !CLI_IDS.has(t.id));
-  const cli = tools.filter((t) => CLI_IDS.has(t.id));
-  const dot = (on: boolean) => (on ? theme.ok : theme.muted);
   return (
-    <Box flexDirection="column">
-      <Text>
-        <Text dimColor>[IDEs] </Text>
-        {ide.map((t) => (
-          <Text key={t.id} color={dot(t.installed)}>{`${t.installed ? "●" : "○"} ${t.id}  `}</Text>
-        ))}
-      </Text>
-      <Text>
-        <Text dimColor>[CLIs] </Text>
-        {cli.map((t) => (
-          <Text key={t.id} color={dot(t.installed)}>{`${t.installed ? "●" : "○"} ${t.id}  `}</Text>
-        ))}
-        <Text color={dot(ollama)}>{`${ollama ? "●" : "○"} ollama (local)`}</Text>
-      </Text>
-      <Text dimColor>{`project: ${home?.scan.signals.join(" · ") || "—"}`}</Text>
-    </Box>
-  );
-}
-
-function Row({ line }: { line: LogLine }): React.ReactElement {
-  if (line.kind === "user") return <Text color={theme.accentBright}>{`› ${line.text}`}</Text>;
-  if (line.kind === "ai") return <Text>{`  ${line.text}`}</Text>;
-  const icon =
-    line.kind === "ok" ? <Text color={theme.ok}>✔ </Text> : line.kind === "err" ? <Text color={theme.bad}>✘ </Text> : <Text color={theme.accent}>● </Text>;
-  return (
-    <Text>
-      {icon}
-      <Text dimColor>{line.text}</Text>
-    </Text>
+    <Shell page={page} gradient={gradient} footer={footer}>
+      {page === 1 && (
+        <ChatPage
+          home={home}
+          status={status}
+          log={log}
+          busy={busy}
+          partial={partial}
+          mode={mode}
+          input={input}
+          setInput={setInput}
+          submit={submit}
+          inputActive={page === 1}
+        />
+      )}
+      {page === 2 && (
+        <FactoryPage
+          sel={sel2}
+          overlay={overlay}
+          setOverlayValue={(v) => setOverlay((o) => (o ? { ...o, value: v } : o))}
+          onOverlaySubmit={onOverlaySubmit}
+          skills={skills}
+        />
+      )}
+      {page === 3 && <McpPage home={home} staging={staging} busy={busy} />}
+    </Shell>
   );
 }
 
