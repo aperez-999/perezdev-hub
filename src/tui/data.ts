@@ -90,12 +90,24 @@ export async function installProposal(proposal: AgentProposal, targets: ToolId[]
   await installSpec(generateSpec(input, override), new Date().toISOString());
 }
 
+const VOWEL = /^[aeiou]/i;
+
+/** Expand a terse role-like input ("frontend dev") into a usable description sentence. */
+export function expandPurpose(purpose: string): string {
+  const p = purpose.trim();
+  const roleLike = p.split(/\s+/).length <= 4 && !/[.!?]$/.test(p) && !/\b(when|use|that|which|to)\b/i.test(p);
+  if (!roleLike) return p;
+  const article = VOWEL.test(p) ? "an" : "a";
+  return `act as ${article} ${p} — own the design, implementation, and review of work in that domain`;
+}
+
 /** Generate + install a custom agent from a free-text description. */
 export async function installDescribed(name: string, purpose: string, targets: ToolId[]): Promise<void> {
+  const role = `${VOWEL.test(purpose.trim()) ? "an" : "a"} ${purpose.trim()} specialist`;
   const input: GenerateInput = {
     name,
-    role: `a ${name.split("-").join(" ")} agent`,
-    description: purpose,
+    role,
+    description: expandPurpose(purpose),
     behaviors: [],
     allowedTools: [],
     mcpDependencies: [],
