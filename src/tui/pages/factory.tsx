@@ -26,12 +26,16 @@ export function FactoryPage({
   setOverlayValue,
   onOverlaySubmit,
   skills,
+  status,
+  busy,
 }: {
   sel: number;
   overlay: Overlay | null;
   setOverlayValue: (s: string) => void;
   onOverlaySubmit: (s: string) => void;
   skills: string[] | null;
+  status: string | null;
+  busy: boolean;
 }): React.ReactElement {
   return (
     <Box flexDirection="column">
@@ -70,6 +74,13 @@ export function FactoryPage({
 
       {!overlay && !skills && (
         <Text dimColor>{"\n↑↓ navigate · Enter select · Esc back to chat"}</Text>
+      )}
+
+      {(busy || status) && !overlay && (
+        <Text>
+          {busy && <Text color={theme.accent}>building… </Text>}
+          {status && <Text color={theme.ok}>{`✔ ${status}`}</Text>}
+        </Text>
       )}
     </Box>
   );
