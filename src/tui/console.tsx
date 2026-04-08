@@ -17,10 +17,12 @@ import {
 } from "./data.js";
 import { slugSchema } from "../core/agent-spec.js";
 import {
+  ConfirmBox,
   type Autonomy,
   type LogKind,
   type LogLine,
   type Mode,
+  type PendingConfirm,
   type Thinking,
 } from "./components.js";
 import { Shell, Footer, type Page } from "./shell.js";
@@ -60,7 +62,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const [sel2, setSel2] = useState(0);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [skills, setSkills] = useState<string[] | null>(null);
-  const pending = useRef<{ desc: string; run: () => Promise<string> } | null>(null);
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
 
   const push = (kind: LogKind, text: string) => setLog((l) => [...l, { kind, text }].slice(-200));
 
@@ -114,35 +116,61 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     if (key.ctrl && ch === "t") return setThinking((t) => (t === "low" ? "medium" : t === "medium" ? "high" : "low"));
 
     if (key.escape) {
+      if (confirm) return cancelConfirm();
       if (overlay) return setOverlay(null);
       if (skills) return setSkills(null);
       return goto(1);
     }
+
+    // A pending confirm captures Y/N exclusively — every other key is swallowed
+    // so letters/digits can't leak into tab switching or background menus.
+    if (confirm) {
+      if (ch === "y" || ch === "Y") approveConfirm();
+      else if (ch === "n" || ch === "N") cancelConfirm();
+      return;
+    }
+
+    // While the goal/log overlay is open the TextInput owns typing; freeze nav.
+    if (overlay) return;
     if (busy) return;
 
     // Digit page-switch only off the chat page (page 1 keeps digits for typing).
-    if (page !== 1 && !overlay && (ch === "1" || ch === "2" || ch === "3")) {
+    if (page !== 1 && (ch === "1" || ch === "2" || ch === "3")) {
       return goto(Number(ch) as Page);
     }
 
-    if (page === 2 && !overlay) {
+    if (page === 2) {
       if (key.upArrow) return setSel2((s) => (s + FACTORY_ITEMS.length - 1) % FACTORY_ITEMS.length);
       if (key.downArrow) return setSel2((s) => (s + 1) % FACTORY_ITEMS.length);
       if (key.return) return activateFactory(sel2);
     }
-    if (page === 3 && !overlay && key.return) {
+    if (page === 3 && key.return) {
       return discoverMcp();
     }
   });
 
-  /** Run a mutating action now (auto) or queue it for /yes (manual). */
+  /** Run a mutating action now (auto) or pop an inline Y/N confirm (manual). */
   async function guard(desc: string, run: () => Promise<string>): Promise<void> {
     if (autonomy === "auto") {
       await execute(run);
     } else {
-      pending.current = { desc, run };
-      push("info", `⚠ Manual mode — type /yes to apply: ${desc}`);
+      setConfirm({ desc, run });
+      push("info", `⚠ confirm needed: ${desc}  (Y approve / N cancel)`);
     }
+  }
+
+  function approveConfirm(): void {
+    const c = confirm;
+    setConfirm(null);
+    if (!c) return;
+    setLog((l) => l.filter((x) => !/^⚠ confirm needed|^discovered:/i.test(x.text)));
+    void execute(c.run);
+  }
+
+  function cancelConfirm(): void {
+    if (!confirm) return;
+    setConfirm(null);
+    push("info", "cancelled");
   }
 
   async function execute(run: () => Promise<string>): Promise<void> {
@@ -247,9 +275,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       return;
     }
     if (cmd === "yes") {
-      const p = pending.current;
-      pending.current = null;
-      if (p) await execute(p.run);
+      if (confirm) approveConfirm();
       else push("info", "nothing pending");
       return;
     }
@@ -389,7 +415,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     <Footer label={provider?.label ?? "no-model"} status={provider?.status ?? "..."} autonomy={autonomy} thinking={thinking} />
   );
   return (
-    <Shell page={page} gradient={gradient} footer={footer}>
+    <Shell page={page} gradient={gradient} footer={footer} confirm={confirm ? <ConfirmBox desc={confirm.desc} /> : undefined}>
       {page === 1 && (
         <ChatPage
           home={home}
@@ -401,7 +427,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           input={input}
           setInput={setInput}
           submit={submit}
-          inputActive={page === 1}
+          inputActive={page === 1 && !confirm}
         />
       )}
       {page === 2 && (
@@ -411,6 +437,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           setOverlayValue={(v) => setOverlay((o) => (o ? { ...o, value: v } : o))}
           onOverlaySubmit={onOverlaySubmit}
           skills={skills}
+          status={[...log].reverse().find((l) => l.kind === "ok")?.text ?? null}
+          busy={busy}
         />
       )}
       {page === 3 && <McpPage home={home} staging={staging} busy={busy} />}
