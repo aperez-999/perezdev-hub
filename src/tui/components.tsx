@@ -34,6 +34,27 @@ export function Row({ line }: { line: LogLine }): React.ReactElement {
   );
 }
 
+/** A pending mutating action awaiting manual Y/N approval. */
+export interface PendingConfirm {
+  desc: string;
+  run: () => Promise<string>;
+}
+
+/** Inline manual-confirmation dialog rendered on any page (no chat bar needed). */
+export function ConfirmBox({ desc }: { desc: string }): React.ReactElement {
+  return (
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.warn} paddingX={1} marginTop={1}>
+      <Text color={theme.warn} bold>⚠ MANUAL CONFIRMATION REQUIRED</Text>
+      <Text>{desc}?</Text>
+      <Text>
+        <Text color={theme.ok} bold>[Y] Approve</Text>
+        <Text dimColor>{"  │  "}</Text>
+        <Text color={theme.bad} bold>[N] Cancel</Text>
+      </Text>
+    </Box>
+  );
+}
+
 /** IDE / CLI / Ollama detection badges plus the project signal line. */
 export function Badges({ home, ollama }: { home: HomeData | null; ollama: boolean }): React.ReactElement {
   const tools = home?.tools ?? [];
