@@ -25,11 +25,13 @@ const TABS: { page: Page; label: string }[] = [
 export function Shell({
   page,
   footer,
+  confirm,
   children,
   gradient,
 }: {
   page: Page;
   footer: React.ReactNode;
+  confirm?: React.ReactNode;
   children: React.ReactNode;
   gradient: string;
 }): React.ReactElement {
@@ -52,6 +54,7 @@ export function Shell({
 
       <Box flexDirection="column" marginY={1}>
         {children}
+        {confirm}
       </Box>
 
       <Text dimColor>{"─".repeat(74)}</Text>
