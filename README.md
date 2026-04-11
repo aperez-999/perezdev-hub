@@ -32,6 +32,8 @@ Three pages, switched with the function keys (or `1`/`2`/`3` off the chat page);
 - **`F2` ⚙ Skill Builder** — an arrow-navigable factory: *Create Custom Agent* (inline `Agent Goal:` overlay → runs the `/build` engine), *Run Workspace Diagnoser* (`Log file:` overlay → trace-regex tool), *View Project Skills* (lists installed `.md`/`.mdc` rules).
 - **`F3` 🔌 MCP Manager** — connection matrix (GitHub / Atlassian), a `[ Run Discovery Scanner ]` button (`Enter` runs `/mcp auto`), and a live staging stream of MCP writes.
 
+In **Manual** autonomy any mutating action pops an inline **`[Y] Approve / [N] Cancel`** dialog right on the current page — no need to jump back to the chat bar (`/yes` still works too). While the dialog or a text overlay is open, background navigation and tab keys are frozen so keystrokes can't leak.
+
 - **Type a prompt** → it streams from your **local Ollama model** (nothing leaves your machine).
 - **`Shift+Tab`** Normal ↔ Planning (routes to a reasoning model) · **`Ctrl+A`** Manual ↔ Autonomous · **`Ctrl+T`** thinking depth.
 - **`@file`** in a prompt injects that file's contents as context.
@@ -54,7 +56,7 @@ inspo writes **automation-ready** skill files, not stubs. Each agent gets a stru
 
 Two generation modes:
 
-- **Templates (default, no key)** — deterministic and instant. A domain inferencer (review, testing, debugging, docs, refactor, security, **accessibility**, SQL, API, performance, planning, architecture, releases) tailors the responsibilities, workflow, and done-checks to your purpose and stack.
+- **Templates (default, no key)** — deterministic and instant. A domain inferencer (review, testing, debugging, docs, refactor, security, **accessibility**, **frontend**, **AI/ML engineering**, SQL, API, performance, planning, architecture, releases) tailors the responsibilities, workflow, and done-checks to your purpose and stack. Even a terse role like `frontend dev` or `ai engineer` is expanded into a full, specific skill body — not a fill-in-the-blank stub.
 - **AI-generated (with `ANTHROPIC_API_KEY`)** — Opus 4.8 writes the entire body, specific to your exact request. This is the non-templated path; set the key for the best output:
 
   ```bash
