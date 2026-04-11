@@ -22,6 +22,9 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
+const ESC = String.fromCharCode(27);
+const F2 = ESC + "OQ";
+const F3 = ESC + "OR";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until(fn: () => boolean, timeout = 4000): Promise<void> {
   const start = Date.now();
@@ -61,7 +64,7 @@ describe("Console TUI", () => {
     stdin.write("OR"); // F3
     await until(() => /SYSTEM CONNECTION MATRIX/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
-    stdin.write(""); // Escape -> back to chat
+    stdin.write(ESC); // Escape -> back to chat
     await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
@@ -76,14 +79,42 @@ describe("Console TUI", () => {
     await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("/build queues in manual mode and applies on /yes", async () => {
+  it("/build pops an inline manual confirm and applies on Y", async () => {
     const { lastFrame, stdin } = render(<App />);
     await wait(1300);
     await typeLine(stdin, "/build review my code for bugs");
-    await wait(400);
-    await until(() => /Manual mode/.test(lastFrame() ?? ""), 6000);
-    await typeLine(stdin, "/yes");
+    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    expect(lastFrame()).toMatch(/\[Y\] Approve/);
+    await wait(200);
+    stdin.write("y");
     await until(() => /built agent/.test(lastFrame() ?? ""), 10000);
+  }, 25000);
+
+  it("N cancels a pending manual confirm", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await wait(1300);
+    await typeLine(stdin, "/build a quick helper");
+    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    await wait(200);
+    stdin.write("n");
+    await until(() => /cancelled/.test(lastFrame() ?? "") && !/MANUAL CONFIRMATION/.test(lastFrame() ?? ""), 6000);
+  }, 20000);
+
+  it("F2 overlay → build → Y confirm generates the agent", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write("OQ"); // F2
+    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    await wait(200);
+    stdin.write("\r"); // Create Custom Agent → overlay
+    await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
+    await wait(200);
+    await typeLine(stdin, "frontend dev");
+    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    await wait(200);
+    stdin.write("y");
+    await until(() => /frontend-dev/.test(lastFrame() ?? ""), 10000);
   }, 25000);
 });
 
