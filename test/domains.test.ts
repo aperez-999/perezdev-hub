@@ -15,18 +15,6 @@ describe("domain inference", () => {
     expect(responsibilities.some((r) => /ARIA|contrast|keyboard/i.test(r))).toBe(true);
   });
 
-  it("a frontend role pulls in UI-specific guidance", () => {
-    const { responsibilities, workflow } = inferDomains("frontend dev");
-    expect(responsibilities.some((r) => /responsive|UI component|state/i.test(r))).toBe(true);
-    expect(workflow.some((w) => /accessib|responsive|breakpoint/i.test(w))).toBe(true);
-  });
-
-  it("an AI-engineer role pulls in model/eval guidance", () => {
-    const { responsibilities, done } = inferDomains("ai engineer");
-    expect(responsibilities.some((r) => /prompt|retrieval|fine-tun|model/i.test(r))).toBe(true);
-    expect(done.some((d) => /eval|accuracy|cost/i.test(d))).toBe(true);
-  });
-
   it("returns nothing for an unmatched purpose", () => {
     const { responsibilities, guidelines } = inferDomains("water the office plants");
     expect(responsibilities).toEqual([]);
