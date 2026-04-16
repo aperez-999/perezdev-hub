@@ -8,7 +8,7 @@ import type { RegistryMcpServer } from "../registry/index.js";
 
 /** Convert a catalog MCP server into the MCP dependency form tools store. */
 export function toDependency(server: RegistryMcpServer): McpDependency {
-  return { name: server.id, command: server.command, args: server.args, env: {} };
+  return { name: server.id, command: server.command, args: server.args, env: server.env ?? {} };
 }
 
 /** Targets that can host MCP servers, paired with their config path. */
