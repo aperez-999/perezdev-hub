@@ -6,6 +6,8 @@ export interface RegistryMcpServer {
   command: string;
   args: string[];
   tags: string[];
+  /** Environment variables the server needs (e.g. API tokens). */
+  env?: Record<string, string>;
 }
 
 /**
@@ -68,5 +70,29 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-memory"],
     tags: ["memory", "core"],
+  },
+  {
+    id: "brave-search",
+    name: "Brave Search",
+    description: "Web search via the Brave Search API.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-brave-search"],
+    tags: ["web", "search"],
+  },
+  {
+    id: "docker",
+    name: "Docker",
+    description: "Manage containers, images, and Docker environments.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-docker"],
+    tags: ["docker", "devops"],
+  },
+  {
+    id: "puppeteer",
+    name: "Puppeteer",
+    description: "Drive a headless browser for automation and scraping.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-puppeteer"],
+    tags: ["web", "automation"],
   },
 ];
