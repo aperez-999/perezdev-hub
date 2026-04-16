@@ -101,8 +101,17 @@ export function expandPurpose(purpose: string): string {
   return `act as ${article} ${p} — own the design, implementation, and review of work in that domain`;
 }
 
-/** Generate + install a custom agent from a free-text description. */
-export async function installDescribed(name: string, purpose: string, targets: ToolId[]): Promise<void> {
+/**
+ * Generate + install a custom agent from a free-text description. When
+ * `bodyOverride` is supplied (e.g. compiled live by the active LLM provider) it
+ * becomes the skill body; otherwise the deterministic template path is used.
+ */
+export async function installDescribed(
+  name: string,
+  purpose: string,
+  targets: ToolId[],
+  bodyOverride?: string,
+): Promise<void> {
   const role = `${VOWEL.test(purpose.trim()) ? "an" : "a"} ${purpose.trim()} specialist`;
   const input: GenerateInput = {
     name,
@@ -113,8 +122,28 @@ export async function installDescribed(name: string, purpose: string, targets: T
     mcpDependencies: [],
     targets,
   };
-  const override = hasAnthropicKey() ? (await synthesizeInstructions(input)) ?? undefined : undefined;
+  const override =
+    bodyOverride?.trim() || (hasAnthropicKey() ? (await synthesizeInstructions(input)) ?? undefined : undefined);
   await installSpec(generateSpec(input, override), new Date().toISOString());
+}
+
+/** Install a custom MCP server compiled on the fly (from an LLM intent prompt). */
+export async function installCustomMcp(
+  id: string,
+  description: string,
+  config: { command: string; args: string[]; env: Record<string, string> },
+  targets: ToolId[],
+): Promise<void> {
+  const server: RegistryMcpServer = {
+    id,
+    name: id,
+    description,
+    command: config.command,
+    args: config.args,
+    tags: ["custom"],
+    env: config.env,
+  };
+  await installMcpServer(server, targets, new Date().toISOString());
 }
 
 export async function installCatalogMcp(server: RegistryMcpServer, targets: ToolId[]): Promise<void> {
