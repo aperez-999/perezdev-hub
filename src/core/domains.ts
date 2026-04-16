@@ -227,55 +227,6 @@ export const DOMAIN_RULES: DomainRule[] = [
     done: ["Issues map to specific WCAG criteria", "Keyboard and screen-reader paths are verified"],
   },
   {
-    test: /\b(frontend|front-end|react|vue|svelte|angular|component|ui|ux|css|tailwind|responsive)\b/,
-    responsibilities: [
-      "Build accessible, responsive UI components that match the design system",
-      "Manage state and data flow predictably; avoid unnecessary re-renders",
-      "Handle loading, empty, and error states for every async view",
-    ],
-    guidelines: [
-      "Match the project's component, styling, and state-management conventions",
-      "Keep components small and composable; lift state only as far as it needs to go",
-    ],
-    workflow: [
-      "Identify the component or page, its props/state, and where its data comes from.",
-      "Build the markup with semantic, accessible elements first.",
-      "Wire state and side effects; cover the loading, empty, and error states.",
-      "Style to the design system and verify the responsive breakpoints.",
-      "Check accessibility (keyboard, focus, contrast) and test the interaction.",
-    ],
-    done: [
-      "Every UI state renders correctly (loading, empty, error, success)",
-      "Component is accessible, responsive, and matches existing UI conventions",
-    ],
-  },
-  {
-    test: /\b(ai|ml|llm|rag|genai|mlops)\b|machine learning|deep learning|prompt engineer|embedding|inference|fine-?tune|neural network|data scien/,
-    responsibilities: [
-      "Choose the right approach (prompting, retrieval, or fine-tuning) for the task, budget, and latency",
-      "Engineer prompts and assemble context within token limits; handle truncation",
-      "Evaluate outputs against measurable criteria, not impressions",
-      "Handle non-determinism, rate limits, and failures gracefully",
-    ],
-    guidelines: [
-      "Pin model IDs and versions; make cost, latency, and quality tradeoffs explicit",
-      "Never trust model output blindly — validate, ground it in sources, and add guardrails",
-    ],
-    workflow: [
-      "Define the task, its inputs/outputs, and concrete success metrics.",
-      "Pick an approach (prompt, RAG, fine-tune) justified by accuracy, cost, and latency.",
-      "Build the pipeline: data prep, prompt/context assembly, model call, output parsing.",
-      "Add evaluation: a held-out set and a measurable scoring method.",
-      "Handle errors, retries, rate limits, and streaming; instrument cost and latency.",
-      "Iterate against the metrics until they clear the bar.",
-    ],
-    done: [
-      "Approach is justified against accuracy, cost, and latency",
-      "Outputs are validated with an eval set and measurable scoring",
-      "Failure modes (rate limits, malformed output) are handled",
-    ],
-  },
-  {
     test: /\b(architect|design|adr|system design|tradeoff|rfc)\b/,
     responsibilities: [
       "Propose 2–3 options with explicit tradeoffs before recommending one",
