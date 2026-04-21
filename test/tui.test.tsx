@@ -62,10 +62,35 @@ describe("Console TUI", () => {
     await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Create Custom Agent Skill/);
     stdin.write("OR"); // F3
-    await until(() => /SYSTEM CONNECTION MATRIX/.test(lastFrame() ?? ""), 4000);
+    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
     stdin.write(ESC); // Escape -> back to chat
     await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
+
+  it("F3 shows the industry MCP directory and custom prompt field", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(F3);
+    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    const f = lastFrame() ?? "";
+    expect(f).toMatch(/Local Filesystem/);
+    expect(f).toMatch(/PostgreSQL Database/);
+    expect(f).toMatch(/Run Discovery Scanner/);
+    expect(f).toMatch(/integration prompt/);
+  }, 15000);
+
+  it("F3 Enter on a directory item pops an install confirm", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(F3);
+    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    await wait(200);
+    stdin.write("\r"); // install the highlighted (first) item
+    await until(() => /install mcp filesystem/.test(lastFrame() ?? ""), 6000);
+    expect(lastFrame()).toMatch(/MANUAL CONFIRMATION REQUIRED/);
   }, 15000);
 
   it("opens the Create Custom Agent overlay on F2 → Enter", async () => {
