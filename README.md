@@ -29,8 +29,8 @@ It opens a single **OpenDev-style console**: a bordered, animated screen with a 
 Three pages, switched with the function keys (or `1`/`2`/`3` off the chat page); `Esc` returns to chat:
 
 - **`F1` 🤖 Chat Engine** — the prompt console + ecosystem map + log stream.
-- **`F2` ⚙ Skill Builder** — an arrow-navigable factory: *Create Custom Agent* (inline `Agent Goal:` overlay → runs the `/build` engine), *Run Workspace Diagnoser* (`Log file:` overlay → trace-regex tool), *View Project Skills* (lists installed `.md`/`.mdc` rules).
-- **`F3` 🔌 MCP Manager** — connection matrix (GitHub / Atlassian), a `[ Run Discovery Scanner ]` button (`Enter` runs `/mcp auto`), and a live staging stream of MCP writes.
+- **`F2` ⚙ Skill Builder** — an arrow-navigable factory: *Create Custom Agent* (inline `Agent Goal:` overlay → the active LLM compiles a full skill from your goal), *Run Workspace Diagnoser* (`Log file:` overlay → trace-regex tool), *View Project Skills* (lists installed `.md`/`.mdc` rules).
+- **`F3` 🔌 MCP Manager** — an **industry MCP server directory** (filesystem, SQLite, Postgres, Brave Search, Docker, Puppeteer, Memory, GitHub) with live ●/○ status, a `[ Run Discovery Scanner ]` button (`Enter` runs `/mcp auto`), and a **custom integration prompt** field — describe a server in plain English and the active LLM emits the `mcpServers` JSON to stage and confirm. `Tab` cycles focus across the directory, the scanner button, and the prompt field.
 
 In **Manual** autonomy any mutating action pops an inline **`[Y] Approve / [N] Cancel`** dialog right on the current page — no need to jump back to the chat bar (`/yes` still works too). While the dialog or a text overlay is open, background navigation and tab keys are frozen so keystrokes can't leak.
 
@@ -56,7 +56,8 @@ inspo writes **automation-ready** skill files, not stubs. Each agent gets a stru
 
 Two generation modes:
 
-- **Templates (default, no key)** — deterministic and instant. A domain inferencer (review, testing, debugging, docs, refactor, security, **accessibility**, **frontend**, **AI/ML engineering**, SQL, API, performance, planning, architecture, releases) tailors the responsibilities, workflow, and done-checks to your purpose and stack. Even a terse role like `frontend dev` or `ai engineer` is expanded into a full, specific skill body — not a fill-in-the-blank stub.
+- **AI-generated (default when a provider is active)** — `/build` and the F2 factory route your goal through the active LLM (local Ollama or a cloud key) with a metaprompt that returns a complete skill body (Role & Scope, Responsibilities, Guidelines & Guardrails, Definitions of Done). Nothing is preset — type `embedded rust engineer` or `web3 auditor` and you get a skill written for exactly that.
+- **Templates (fallback, no provider)** — deterministic and instant. A domain inferencer (review, testing, debugging, docs, refactor, security, **accessibility**, SQL, API, performance, planning, architecture, releases) tailors the responsibilities, workflow, and done-checks to your purpose and stack.
 - **AI-generated (with `ANTHROPIC_API_KEY`)** — Opus 4.8 writes the entire body, specific to your exact request. This is the non-templated path; set the key for the best output:
 
   ```bash
