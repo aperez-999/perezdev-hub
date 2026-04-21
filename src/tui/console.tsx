@@ -10,12 +10,15 @@ import {
   installProposal,
   installDescribed,
   installCatalogMcp,
+  installCustomMcp,
   engineMap,
   engineDiagnose,
   catalogMcp,
   type HomeData,
 } from "./data.js";
 import { slugSchema } from "../core/agent-spec.js";
+import { skillMetaprompt, mcpMetaprompt, parseMcpConfig } from "../core/metaprompt.js";
+import type { Provider } from "../core/provider.js";
 import {
   ConfirmBox,
   type Autonomy,
@@ -28,7 +31,7 @@ import {
 import { Shell, Footer, type Page } from "./shell.js";
 import { ChatPage } from "./pages/chat.js";
 import { FactoryPage, FACTORY_ITEMS } from "./pages/factory.js";
-import { McpPage } from "./pages/mcp.js";
+import { McpPage, MCP_DIRECTORY, type McpFocus } from "./pages/mcp.js";
 
 interface Overlay {
   kind: "build" | "diagnose";
@@ -63,6 +66,9 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [skills, setSkills] = useState<string[] | null>(null);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
+  const [sel3, setSel3] = useState(0);
+  const [focus3, setFocus3] = useState<McpFocus>("list");
+  const [mcpInput, setMcpInput] = useState("");
 
   const push = (kind: LogKind, text: string) => setLog((l) => [...l, { kind, text }].slice(-200));
 
@@ -132,20 +138,34 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
 
     // While the goal/log overlay is open the TextInput owns typing; freeze nav.
     if (overlay) return;
+
+    // Page 3 — Tab cycles focus across directory / button / prompt field.
+    if (page === 3) {
+      if (key.tab && !key.shift) {
+        return setFocus3((f) => (f === "list" ? "button" : f === "button" ? "input" : "list"));
+      }
+      if (focus3 === "input") return; // custom-prompt field owns every other key
+      if (busy) return;
+      if (ch === "1" || ch === "2") return goto(Number(ch) as Page);
+      if (focus3 === "list") {
+        if (key.upArrow) return setSel3((s) => (s + MCP_DIRECTORY.length - 1) % MCP_DIRECTORY.length);
+        if (key.downArrow) return setSel3((s) => (s + 1) % MCP_DIRECTORY.length);
+        if (key.return) return installDirectory(sel3);
+      }
+      if (focus3 === "button" && key.return) return void discoverMcp();
+      return;
+    }
+
     if (busy) return;
 
     // Digit page-switch only off the chat page (page 1 keeps digits for typing).
-    if (page !== 1 && (ch === "1" || ch === "2" || ch === "3")) {
+    if (page === 2 && (ch === "1" || ch === "2" || ch === "3")) {
       return goto(Number(ch) as Page);
     }
-
     if (page === 2) {
       if (key.upArrow) return setSel2((s) => (s + FACTORY_ITEMS.length - 1) % FACTORY_ITEMS.length);
       if (key.downArrow) return setSel2((s) => (s + 1) % FACTORY_ITEMS.length);
       if (key.return) return activateFactory(sel2);
-    }
-    if (page === 3 && key.return) {
-      return discoverMcp();
     }
   });
 
@@ -184,12 +204,86 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
   }
 
-  function buildAgent(desc: string): Promise<void> {
+  /** Route one prompt to the active provider (local Ollama or cloud), streaming tokens. */
+  async function callProvider(
+    prompt: string,
+    onToken?: (t: string) => void,
+    system?: string,
+  ): Promise<string> {
+    const p: Provider | null = provider;
+    if (!p || p.kind === "none") {
+      throw new Error(providerHint(p ?? { kind: "none", label: "", status: "", reason: "offline" }));
+    }
+    if (p.kind === "local") return promptModel(engineRef.current!, p.model, prompt, { system, onToken });
+    if (p.vendor === "anthropic") return promptAnthropic(p.model, prompt, { system, onToken });
+    return promptOpenAI(p.model, prompt, { system, onToken });
+  }
+
+  /** Generate a skill body with the active LLM (on request), then confirm + write. */
+  async function buildAgent(desc: string): Promise<void> {
     const name = slugify(desc);
+    let body: string | undefined;
+    if (provider && provider.kind !== "none") {
+      setBusy(true);
+      setPartial("");
+      push("info", "⠋ Querying active AI provider to generate custom skill instructions...");
+      try {
+        body = (await callProvider(skillMetaprompt(desc), (t) => setPartial((p) => p + t))).trim() || undefined;
+      } catch (e) {
+        push("err", e instanceof Error ? e.message : String(e));
+      }
+      setPartial("");
+      setBusy(false);
+    }
     return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
-      await installDescribed(name, desc, targets);
+      await installDescribed(name, desc, targets, body);
       await refresh();
-      return `built agent ${name} (.md skill across ${targets.length} tool(s))`;
+      return `built agent ${name} (.md skill across ${targets.length} tool(s))${body ? " · AI-generated" : ""}`;
+    });
+  }
+
+  /** Install a server picked from the industry directory. */
+  function installDirectory(i: number): void {
+    const item = MCP_DIRECTORY[i];
+    if (!item) return;
+    const server = catalogMcp.find((m) => m.id === item.id);
+    if (!server) return push("err", `no catalog entry for ${item.id}`);
+    void guard(`install mcp ${server.id} → ${targets.join(", ")}`, async () => {
+      await installCatalogMcp(server, targets);
+      await refresh();
+      return `installed mcp ${server.id}`;
+    });
+  }
+
+  /** Compile a custom MCP config from a free-text request via the active LLM. */
+  async function compileMcp(request: string): Promise<void> {
+    const req = request.trim();
+    setMcpInput("");
+    if (!req) return;
+    if (!provider || provider.kind === "none") {
+      return push("err", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }));
+    }
+    setBusy(true);
+    setPartial("");
+    push("info", `⠋ Querying active AI provider to compile MCP config: ${req}`);
+    let parsed: { command: string; args: string[]; env: Record<string, string> };
+    try {
+      const raw = await callProvider(mcpMetaprompt(req), (t) => setPartial((p) => p + t));
+      push("info", raw.trim().slice(0, 200));
+      parsed = parseMcpConfig(raw);
+    } catch (e) {
+      setPartial("");
+      setBusy(false);
+      return push("err", e instanceof Error ? e.message : String(e));
+    }
+    setPartial("");
+    setBusy(false);
+    const id = slugify(req);
+    push("ok", `${id}: ${parsed.command} ${parsed.args.join(" ")}`);
+    return guard(`inject mcp ${id} → ${targets.join(", ")}`, async () => {
+      await installCustomMcp(id, req, parsed, targets);
+      await refresh();
+      return `injected mcp ${id}`;
     });
   }
 
@@ -389,18 +483,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
     const prompt = await resolveContext(text);
     const system = mode === "plan" ? THINKING_SYSTEM : undefined;
-    const onToken = (t: string) => setPartial((p) => p + t);
     setBusy(true);
     setPartial("");
     try {
-      let full: string;
-      if (provider.kind === "local") {
-        full = await promptModel(engineRef.current!, provider.model, prompt, { system, onToken });
-      } else if (provider.vendor === "anthropic") {
-        full = await promptAnthropic(provider.model, prompt, { system, onToken });
-      } else {
-        full = await promptOpenAI(provider.model, prompt, { system, onToken });
-      }
+      const full = await callProvider(prompt, (t) => setPartial((p) => p + t), system);
       push("ai", full.trim() || "(empty response)");
     } catch (err) {
       push("err", err instanceof Error ? err.message : String(err));
@@ -410,7 +496,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     }
   }
 
-  const staging = log.filter((l) => /mcp|inject|discover|server|github/i.test(l.text));
+  const staging = log.filter((l) => /mcp|inject|discover|server|github|compil|config|command|installed/i.test(l.text));
   const footer = (
     <Footer label={provider?.label ?? "no-model"} status={provider?.status ?? "..."} autonomy={autonomy} thinking={thinking} />
   );
@@ -441,7 +527,18 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           busy={busy}
         />
       )}
-      {page === 3 && <McpPage home={home} staging={staging} busy={busy} />}
+      {page === 3 && (
+        <McpPage
+          home={home}
+          staging={staging}
+          busy={busy}
+          sel={sel3}
+          focus={focus3}
+          mcpInput={mcpInput}
+          setMcpInput={setMcpInput}
+          onMcpSubmit={compileMcp}
+        />
+      )}
     </Shell>
   );
 }
