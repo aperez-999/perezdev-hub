@@ -19,6 +19,7 @@ import {
 import { slugSchema } from "../core/agent-spec.js";
 import { skillMetaprompt, mcpMetaprompt, parseMcpConfig } from "../core/metaprompt.js";
 import type { Provider } from "../core/provider.js";
+import { loadRc, saveRc } from "../core/rc.js";
 import {
   ConfirmBox,
   type Autonomy,
@@ -69,6 +70,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const [sel3, setSel3] = useState(0);
   const [focus3, setFocus3] = useState<McpFocus>("list");
   const [mcpInput, setMcpInput] = useState("");
+  const [ignored, setIgnored] = useState<string[]>([]);
+  const rcLoaded = useRef(false);
 
   const push = (kind: LogKind, text: string) => setLog((l) => [...l, { kind, text }].slice(-200));
 
@@ -92,6 +95,22 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     });
     return () => engineRef.current?.close();
   }, []);
+
+  // Restore persisted preferences (~/.perezdevrc): last tab, autonomy, ignored servers.
+  useEffect(() => {
+    void loadRc().then((rc) => {
+      setPage(rc.last_active_tab);
+      setAutonomy(rc.autonomy_mode);
+      setIgnored(rc.mcp_ignored_servers);
+      rcLoaded.current = true;
+    });
+  }, []);
+
+  // Persist preferences whenever they change (after the initial load). Best-effort.
+  useEffect(() => {
+    if (!rcLoaded.current) return;
+    void saveRc({ last_active_tab: page, autonomy_mode: autonomy, mcp_ignored_servers: ignored }).catch(() => {});
+  }, [page, autonomy, ignored]);
 
   // Function keys are stripped by Ink's useInput, so route them off raw stdin.
   useEffect(() => {
@@ -170,11 +189,11 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   });
 
   /** Run a mutating action now (auto) or pop an inline Y/N confirm (manual). */
-  async function guard(desc: string, run: () => Promise<string>): Promise<void> {
+  async function guard(desc: string, run: () => Promise<string>, ignore?: string[]): Promise<void> {
     if (autonomy === "auto") {
       await execute(run);
     } else {
-      setConfirm({ desc, run });
+      setConfirm({ desc, run, ignore });
       push("info", `⚠ confirm needed: ${desc}  (Y approve / N cancel)`);
     }
   }
@@ -188,9 +207,16 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   }
 
   function cancelConfirm(): void {
-    if (!confirm) return;
+    const c = confirm;
+    if (!c) return;
     setConfirm(null);
-    push("info", "cancelled");
+    // Remember declined MCP servers so discovery won't re-prompt for them.
+    if (c.ignore && c.ignore.length) {
+      setIgnored((prev) => [...new Set([...prev, ...c.ignore!])]);
+      push("info", `cancelled — won't suggest ${c.ignore.join(", ")} again`);
+    } else {
+      push("info", "cancelled");
+    }
   }
 
   async function execute(run: () => Promise<string>): Promise<void> {
@@ -310,15 +336,21 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     if (h.scan.databases.includes("postgres")) ids.add("postgres");
     if (h.scan.databases.includes("sqlite")) ids.add("sqlite");
     const servers = [...ids]
+      .filter((id) => !ignored.includes(id)) // skip servers the user already declined
       .map((id) => catalogMcp.find((m) => m.id === id))
       .filter((s): s is NonNullable<typeof s> => !!s);
-    if (servers.length === 0) return push("info", "no MCP servers inferred for this workspace");
+    if (servers.length === 0) return push("info", "no new MCP servers inferred for this workspace");
     push("info", `discovered: ${servers.map((s) => s.id).join(", ")}`);
-    return guard(`inject ${servers.length} MCP server(s) → ${targets.join(", ")}`, async () => {
-      for (const s of servers) await installCatalogMcp(s, targets);
-      await refresh();
-      return `injected ${servers.map((s) => s.id).join(", ")}`;
-    });
+    const sids = servers.map((s) => s.id);
+    return guard(
+      `inject ${servers.length} MCP server(s) → ${targets.join(", ")}`,
+      async () => {
+        for (const s of servers) await installCatalogMcp(s, targets);
+        await refresh();
+        return `injected ${sids.join(", ")}`;
+      },
+      sids,
+    );
   }
 
   function activateFactory(index: number): void {
