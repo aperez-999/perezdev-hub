@@ -53,6 +53,7 @@ describe("recommend (generative)", () => {
     frameworks: ["react"],
     databases: ["postgres"],
     hasTests: true,
+    testFrameworks: ["vitest"],
     signals: [],
   };
 
