@@ -6,6 +6,7 @@ import { installSpec, bumpPatch } from "../core/install.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
 import { installMcpServer, removeMcpServer } from "../core/mcp-install.js";
 import { scanProject, type ProjectScan } from "../core/scan.js";
+import { scanEcosystem, type EcoTool } from "../core/ecosystem.js";
 import { recommend, type AgentProposal, type McpSuggestion } from "../core/recommend.js";
 import { hasAnthropicKey } from "../core/config.js";
 import { synthesizeInstructions } from "../llm/synthesize.js";
@@ -26,6 +27,7 @@ export interface InstalledAgent {
 
 export interface HomeData {
   tools: ToolBadge[];
+  ecosystem: EcoTool[];
   targets: ToolId[];
   scan: ProjectScan;
   proposals: AgentProposal[];
@@ -50,6 +52,7 @@ export async function loadHome(): Promise<HomeData> {
   const targets: ToolId[] = installedIds.length > 0 ? installedIds : [...TOOL_IDS];
 
   const scan = await scanProject();
+  const ecosystem = await scanEcosystem();
   const entries = await listEntries();
   const mcpEntries = await listMcpEntries();
   const recs = recommend(
@@ -60,6 +63,7 @@ export async function loadHome(): Promise<HomeData> {
 
   return {
     tools,
+    ecosystem,
     targets,
     scan,
     proposals: recs.agents,

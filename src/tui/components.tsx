@@ -38,6 +38,8 @@ export function Row({ line }: { line: LogLine }): React.ReactElement {
 export interface PendingConfirm {
   desc: string;
   run: () => Promise<string>;
+  /** MCP server ids to remember as "declined" if the user cancels this prompt. */
+  ignore?: string[];
 }
 
 /** Inline manual-confirmation dialog rendered on any page (no chat bar needed). */
@@ -55,25 +57,25 @@ export function ConfirmBox({ desc }: { desc: string }): React.ReactElement {
   );
 }
 
-/** IDE / CLI / Ollama detection badges plus the project signal line. */
+/** IDE / CLI / Ollama detection badges plus the project signal line.
+ *  Reflects the real machine footprint from the live ecosystem scan. */
 export function Badges({ home, ollama }: { home: HomeData | null; ollama: boolean }): React.ReactElement {
-  const tools = home?.tools ?? [];
-  const ide = tools.filter((t) => !CLI_IDS.has(t.id));
-  const cli = tools.filter((t) => CLI_IDS.has(t.id));
+  const eco = home?.ecosystem ?? [];
+  const ide = eco.filter((t) => t.kind === "ide");
+  const cli = eco.filter((t) => t.kind === "cli");
   const dot = (on: boolean) => (on ? theme.ok : theme.muted);
+  const badge = (id: string, on: boolean) => (
+    <Text key={id} color={dot(on)}>{`${on ? "●" : "○"} ${id}  `}</Text>
+  );
   return (
     <Box flexDirection="column">
       <Text>
         <Text dimColor>[IDEs] </Text>
-        {ide.map((t) => (
-          <Text key={t.id} color={dot(t.installed)}>{`${t.installed ? "●" : "○"} ${t.id}  `}</Text>
-        ))}
+        {ide.map((t) => badge(t.label, t.present))}
       </Text>
       <Text>
         <Text dimColor>[CLIs] </Text>
-        {cli.map((t) => (
-          <Text key={t.id} color={dot(t.installed)}>{`${t.installed ? "●" : "○"} ${t.id}  `}</Text>
-        ))}
+        {cli.map((t) => badge(t.label, t.present))}
         <Text color={dot(ollama)}>{`${ollama ? "●" : "○"} ollama (local)`}</Text>
       </Text>
       <Text dimColor>{`project: ${home?.scan.signals.join(" · ") || "—"}`}</Text>
