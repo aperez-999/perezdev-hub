@@ -9,6 +9,8 @@ export interface ProjectScan {
   frameworks: string[];
   databases: string[];
   hasTests: boolean;
+  /** Named test frameworks detected (e.g. vitest, jest, pytest). */
+  testFrameworks: string[];
   /** Human-readable summary chips. */
   signals: string[];
 }
@@ -36,8 +38,18 @@ const DB_DEPS: Record<string, string> = {
   "better-sqlite3": "sqlite",
   mongodb: "mongo",
   mongoose: "mongo",
+  redis: "redis",
+  ioredis: "redis",
 };
-const TEST_DEPS = ["jest", "vitest", "mocha", "@playwright/test", "cypress", "ava", "jasmine"];
+const TEST_DEPS: Record<string, string> = {
+  jest: "jest",
+  vitest: "vitest",
+  mocha: "mocha",
+  "@playwright/test": "playwright",
+  cypress: "cypress",
+  ava: "ava",
+  jasmine: "jasmine",
+};
 
 /** Scan the project directory for languages, frameworks, databases, and tests. */
 export async function scanProject(dir: string = process.cwd()): Promise<ProjectScan> {
@@ -48,6 +60,7 @@ export async function scanProject(dir: string = process.cwd()): Promise<ProjectS
     frameworks: [],
     databases: [],
     hasTests: false,
+    testFrameworks: [],
     signals: [],
   };
 
@@ -59,9 +72,10 @@ export async function scanProject(dir: string = process.cwd()): Promise<ProjectS
     try {
       const pkg = JSON.parse(pkgRaw) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
       const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+      if (deps["typescript"] || deps["ts-node"]) push(scan.languages, "typescript");
       for (const [dep, label] of Object.entries(FRAMEWORK_DEPS)) if (deps[dep]) push(scan.frameworks, label);
       for (const [dep, label] of Object.entries(DB_DEPS)) if (deps[dep]) push(scan.databases, label);
-      if (TEST_DEPS.some((t) => deps[t])) scan.hasTests = true;
+      for (const [dep, label] of Object.entries(TEST_DEPS)) if (deps[dep]) push(scan.testFrameworks, label);
     } catch {
       /* ignore malformed package.json */
     }
@@ -80,7 +94,22 @@ export async function scanProject(dir: string = process.cwd()): Promise<ProjectS
     if (/\bflask\b/.test(t)) push(scan.frameworks, "flask");
     if (/psycopg|sqlalchemy|asyncpg/.test(t)) push(scan.databases, "postgres");
     if (/\bsqlite\b/.test(t)) push(scan.databases, "sqlite");
-    if (/pytest|unittest/.test(t)) scan.hasTests = true;
+    if (/\bredis\b/.test(t)) push(scan.databases, "redis");
+    if (/pytest/.test(t)) push(scan.testFrameworks, "pytest");
+    else if (/unittest/.test(t)) push(scan.testFrameworks, "unittest");
+  }
+
+  // Ruby
+  const gemfile = await readIfExists(join(dir, "Gemfile"));
+  if (gemfile) {
+    scan.languages.push("ruby");
+    const g = gemfile.toLowerCase();
+    if (/\brails\b/.test(g)) push(scan.frameworks, "rails");
+    if (/\bsinatra\b/.test(g)) push(scan.frameworks, "sinatra");
+    if (/\bpg\b/.test(g)) push(scan.databases, "postgres");
+    if (/sqlite3/.test(g)) push(scan.databases, "sqlite");
+    if (/\bredis\b/.test(g)) push(scan.databases, "redis");
+    if (/\brspec\b/.test(g)) push(scan.testFrameworks, "rspec");
   }
 
   // Other languages
@@ -88,12 +117,13 @@ export async function scanProject(dir: string = process.cwd()): Promise<ProjectS
   if (await exists(join(dir, "Cargo.toml"))) scan.languages.push("rust");
   if ((await exists(join(dir, "pom.xml"))) || (await exists(join(dir, "build.gradle")))) scan.languages.push("java");
 
+  scan.hasTests = scan.testFrameworks.length > 0;
   scan.signals = [
     ...(scan.git ? ["git"] : []),
     ...scan.languages,
     ...scan.frameworks,
     ...scan.databases.map((d) => `db:${d}`),
-    ...(scan.hasTests ? ["tests"] : []),
+    ...scan.testFrameworks,
   ];
   return scan;
 }
