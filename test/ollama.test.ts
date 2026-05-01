@@ -12,11 +12,18 @@ const hasPython = (() => {
 })();
 
 describe.runIf(hasPython)("ollama routing", () => {
-  it("degrades gracefully when Ollama is not running", async () => {
-    // No Ollama in CI/dev → available false, no models, but never throws.
+  it("returns a well-formed status and never throws", async () => {
+    // Whether or not Ollama is running locally, detect must resolve cleanly.
     const status = await detectOllama();
-    expect(status.available).toBe(false);
-    expect(status.models).toEqual([]);
-    expect(typeof status.error).toBe("string");
+    expect(typeof status.available).toBe("boolean");
+    expect(Array.isArray(status.models)).toBe(true);
+    if (status.available) {
+      // Reachable: models is a (possibly empty) list, no error.
+      expect(status.error).toBeUndefined();
+    } else {
+      // Unreachable: graceful, with a readable reason and no models.
+      expect(status.models).toEqual([]);
+      expect(typeof status.error).toBe("string");
+    }
   });
 });
