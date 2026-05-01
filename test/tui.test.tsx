@@ -18,8 +18,10 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   process.chdir(tmpdir());
-  await rm(home, { recursive: true, force: true });
-  await rm(cwd, { recursive: true, force: true });
+  // The spawned Python engine may still be writing cache files into HOME during
+  // teardown; retry the removal to absorb that race.
+  await rm(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  await rm(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
 const ESC = String.fromCharCode(27);
@@ -66,6 +68,16 @@ describe("Console TUI", () => {
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
     stdin.write(ESC); // Escape -> back to chat
     await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
+
+  it("restores the last active tab from ~/.perezdevrc on boot", async () => {
+    await writeFile(
+      join(home, ".perezdevrc"),
+      JSON.stringify({ last_active_tab: 3, autonomy_mode: "auto", mcp_ignored_servers: [] }),
+    );
+    const { lastFrame } = render(<App />);
+    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/Autonomy: auto/);
   }, 15000);
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
