@@ -26,6 +26,8 @@ perezdev
 
 It opens a single **OpenDev-style console**: a bordered, animated screen with a matrix header, a **tabbed page bar**, tool badges (IDEs / CLIs / Ollama), an `[AUTOMATION & LOG STREAM]`, a command input, and a live footer (`◆ model │ Autonomy │ Thinking │ ollama status`). You drive it by typing — no menu to arrow through. Everything you do appends to the log.
 
+The header badges are **live, not hardcoded**: on launch the hub scans your workspace and home dir for each tool's real footprint — `.cursor/rules` / `.cursorrules`, `.clinerules`, `.windsurfrules`, `.github/copilot-instructions.md`, `~/.claude/settings.json`, `.aider.conf.yml` — and flips ● / ○ to mirror exactly what you have. The `project:` line maps your stack from `package.json` / `requirements.txt` / `Gemfile` / `go.mod` / `Cargo.toml` (languages, frameworks, databases incl. redis, and the named test framework). Your last tab, autonomy mode, and declined-MCP list persist in `~/.perezdevrc` and are restored on the next launch.
+
 Three pages, switched with the function keys (or `1`/`2`/`3` off the chat page); `Esc` returns to chat:
 
 - **`F1` 🤖 Chat Engine** — the prompt console + ecosystem map + log stream.
