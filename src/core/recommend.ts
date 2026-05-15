@@ -1,5 +1,5 @@
 import type { ProjectScan } from "./scan.js";
-import { MCP_SERVERS, getMcpServer, type RegistryMcpServer } from "../registry/index.js";
+import { getMcpServer, type RegistryMcpServer } from "../registry/index.js";
 
 // A generated (not preset) agent tailored to the scan; becomes an AgentSpec at install time.
 export interface AgentProposal {
@@ -132,9 +132,4 @@ export function recommend(
   agents.sort((a, b) => b.score - a.score);
   mcp.sort((a, b) => b.score - a.score);
   return { agents, mcp };
-}
-
-/** All MCP servers (for the Browse view). */
-export function allMcpServers(): RegistryMcpServer[] {
-  return MCP_SERVERS;
 }

@@ -1,16 +1,16 @@
 import type { AgentSpec, ToolId } from "../core/agent-spec.js";
 import { TOOL_IDS } from "../core/agent-spec.js";
-import { detectAll, getAdapter } from "../adapters/registry.js";
-import { listEntries, listMcpEntries, removeAgentEntry, type McpEntry } from "../core/lockfile.js";
-import { installSpec, bumpPatch } from "../core/install.js";
+import { detectAll } from "../adapters/registry.js";
+import { listEntries, listMcpEntries, type McpEntry } from "../core/lockfile.js";
+import { installSpec } from "../core/install.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
-import { installMcpServer, removeMcpServer } from "../core/mcp-install.js";
+import { installMcpServer } from "../core/mcp-install.js";
 import { scanProject, type ProjectScan } from "../core/scan.js";
 import { scanEcosystem, type EcoTool } from "../core/ecosystem.js";
 import { recommend, type AgentProposal, type McpSuggestion } from "../core/recommend.js";
 import { hasAnthropicKey } from "../core/config.js";
 import { synthesizeInstructions } from "../llm/synthesize.js";
-import { CLI_AGENTS, MCP_SERVERS, getMcpServer, type RegistryAgent, type RegistryMcpServer } from "../registry/index.js";
+import { MCP_SERVERS, getMcpServer, type RegistryMcpServer } from "../registry/index.js";
 
 export interface ToolBadge {
   id: ToolId;
@@ -38,7 +38,6 @@ export interface HomeData {
 }
 
 export const catalogMcp: RegistryMcpServer[] = MCP_SERVERS;
-export const catalogCli: RegistryAgent[] = CLI_AGENTS;
 
 /** Load everything the TUI needs: tools, project scan, recommendations, installed. */
 export async function loadHome(): Promise<HomeData> {
@@ -152,20 +151,6 @@ export async function installCustomMcp(
 
 export async function installCatalogMcp(server: RegistryMcpServer, targets: ToolId[]): Promise<void> {
   await installMcpServer(server, targets, new Date().toISOString());
-}
-
-export async function removeAgent(agent: InstalledAgent): Promise<void> {
-  for (const t of agent.spec.targets) await getAdapter(t).remove(agent.spec);
-  await removeAgentEntry(agent.name);
-}
-
-export async function removeMcp(id: string): Promise<void> {
-  await removeMcpServer(id);
-}
-
-export async function updateInstalled(spec: AgentSpec, bump: boolean): Promise<void> {
-  const next = bump ? { ...spec, version: bumpPatch(spec.version) } : spec;
-  await installSpec(next, new Date().toISOString());
 }
 
 export { getMcpServer };

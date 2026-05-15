@@ -9,9 +9,3 @@ export const theme = {
 
 // Gradient presets cycled to make the logo shimmer.
 export const GRADIENTS = ["cristal", "teen", "mind", "vice", "morning", "passion"] as const;
-
-export const KIND_COLOR: Record<string, string> = {
-  agent: "green",
-  mcp: "blue",
-  cli: "yellow",
-};
