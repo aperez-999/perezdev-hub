@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { STACKS, getStack } from "../registry/index.js";
+import { getStack } from "../registry/index.js";
 import { TOOL_IDS, type ToolId } from "../core/agent-spec.js";
 import { detectAll } from "../adapters/registry.js";
 import { installStack, planStack } from "../core/stack.js";
@@ -19,18 +19,6 @@ function resolveTargets(csv?: string): ToolId[] | undefined {
     .map((s) => s.trim())
     .filter((s): s is ToolId => (TOOL_IDS as readonly string[]).includes(s));
   return ids.length > 0 ? ids : undefined;
-}
-
-/** List curated stacks. */
-export async function runStacks(): Promise<void> {
-  console.log(pc.bold("\n  Stacks") + pc.dim("  (perezdev stack <id>)\n"));
-  const width = Math.max(...STACKS.map((s) => s.id.length));
-  for (const stack of STACKS) {
-    console.log(`  ${pc.cyan(stack.id.padEnd(width))}  ${pc.dim(stack.summary)}`);
-    const parts = [`skills: ${stack.skillPresets.join(", ")}`, `mcp: ${stack.mcpServers.join(", ")}`];
-    console.log(`  ${" ".repeat(width)}  ${pc.dim(parts.join("  ·  "))}`);
-  }
-  console.log();
 }
 
 /** Install a stack: skill presets + MCP servers across detected tools. */

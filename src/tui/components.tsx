@@ -12,8 +12,6 @@ export interface LogLine {
   text: string;
 }
 
-export const CLI_IDS = new Set(["claude-code", "codex"]);
-
 /** One styled log line in the automation stream. */
 export function Row({ line }: { line: LogLine }): React.ReactElement {
   if (line.kind === "user") return <Text color={theme.accentBright}>{`› ${line.text}`}</Text>;

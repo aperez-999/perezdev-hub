@@ -11,10 +11,6 @@ export type { RegistryAgent, RegistryMcpServer, Stack };
  * would merge fetched entries in here without changing call sites.
  */
 
-export function getCliAgent(id: string): RegistryAgent | undefined {
-  return CLI_AGENTS.find((a) => a.id === id);
-}
-
 export function getMcpServer(id: string): RegistryMcpServer | undefined {
   return MCP_SERVERS.find((m) => m.id === id);
 }
