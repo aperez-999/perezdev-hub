@@ -5,3 +5,7 @@ dist/
 .env
 .env.*
 coverage/
+
+# Local AI build-spec scratch files (not part of the published project)
+CLAUDE.md
+CLAUDE2.md

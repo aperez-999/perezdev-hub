@@ -33,9 +33,19 @@
     "codex",
     "mcp",
     "skills",
+    "tui",
     "developer-tools"
   ],
+  "author": "Alejandro Perez",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/USERNAME/perezdev-hub.git"
+  },
+  "homepage": "https://github.com/USERNAME/perezdev-hub#readme",
+  "bugs": {
+    "url": "https://github.com/USERNAME/perezdev-hub/issues"
+  },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
     "commander": "^12.1.0",
