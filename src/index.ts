@@ -14,6 +14,7 @@ import { runStackInstall } from "./commands/stacks.js";
 import { runHome } from "./commands/home.js";
 import { runTui } from "./commands/tui.js";
 import { runFix } from "./commands/fix.js";
+import { runAutofixCommand } from "./commands/autofix.js";
 import { runMap } from "./commands/map.js";
 
 const program = new Command();
@@ -114,6 +115,14 @@ program
   .argument("[file]", "log/traceback file (or pipe one into stdin)")
   .description("Diagnose a traceback: root file/line, cause, and the fix (Python engine)")
   .action(wrap(runFix));
+
+program
+  .command("autofix")
+  .argument("[file]", "log/traceback file (or pipe one into stdin)")
+  .option("--verify <command>", "command that re-runs the failing code (inferred if omitted)")
+  .option("-y, --yes", "autonomous: apply patches and run commands without confirming")
+  .description("Diagnose a traceback, then patch + verify in a gated loop until it passes")
+  .action(wrap(runAutofixCommand));
 
 program
   .command("map")

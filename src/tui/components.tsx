@@ -35,7 +35,10 @@ export function Row({ line }: { line: LogLine }): React.ReactElement {
 /** A pending mutating action awaiting manual Y/N approval. */
 export interface PendingConfirm {
   desc: string;
-  run: () => Promise<string>;
+  /** Fire-and-forget action run on approve (returns a log line). */
+  run?: () => Promise<string>;
+  /** Promise-style gate: resolve(true) on approve, resolve(false) on cancel. */
+  resolve?: (ok: boolean) => void;
   /** MCP server ids to remember as "declined" if the user cancels this prompt. */
   ignore?: string[];
 }
