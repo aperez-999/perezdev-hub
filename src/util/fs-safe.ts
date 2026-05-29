@@ -132,3 +132,26 @@ export function previewDiff(oldText: string | null, newText: string): DiffLine[]
   }
   return out;
 }
+
+/** A surgical search/replace edit: `find` must occur exactly once in the file. */
+export interface Edit {
+  find: string;
+  replace: string;
+}
+
+/**
+ * Apply search/replace edits to `text`, returning the new content. Pure — the
+ * caller writes it (e.g. under withRollback). Throws if any `find` is missing or
+ * occurs more than once, so an ambiguous patch never silently mis-applies.
+ */
+export function applyEdits(text: string, edits: Edit[]): string {
+  let out = text;
+  for (const [i, edit] of edits.entries()) {
+    if (!edit.find) throw new Error(`edit ${i + 1}: empty 'find'`);
+    const count = out.split(edit.find).length - 1;
+    if (count === 0) throw new Error(`edit ${i + 1}: 'find' snippet not present in the file`);
+    if (count > 1) throw new Error(`edit ${i + 1}: 'find' snippet is ambiguous (${count} matches) — needs more context`);
+    out = out.replace(edit.find, edit.replace);
+  }
+  return out;
+}
