@@ -4,7 +4,9 @@ import { Engine } from "../engine/bridge.js";
 import { detectOllama, promptModel, THINKING_SYSTEM, type OllamaStatus } from "../core/ollama.js";
 import { resolveProvider, providerHint } from "../core/provider.js";
 import { promptAnthropic, promptOpenAI } from "../core/cloud.js";
-import { readIfExists } from "../util/fs-safe.js";
+import { readIfExists, applyEdits, cacheBackup, atomicWriteValidated, withRollback } from "../util/fs-safe.js";
+import { runAutofix, inferVerifyCommand } from "../core/autofix.js";
+import { runCommand } from "../core/exec.js";
 import {
   loadHome,
   installProposal,
@@ -202,14 +204,16 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     const c = confirm;
     setConfirm(null);
     if (!c) return;
+    if (c.resolve) return c.resolve(true); // promise-style gate (e.g. autofix loop)
     setLog((l) => l.filter((x) => !/^⚠ confirm needed|^discovered:/i.test(x.text)));
-    void execute(c.run);
+    if (c.run) void execute(c.run);
   }
 
   function cancelConfirm(): void {
     const c = confirm;
     if (!c) return;
     setConfirm(null);
+    if (c.resolve) return c.resolve(false);
     // Remember declined MCP servers so discovery won't re-prompt for them.
     if (c.ignore && c.ignore.length) {
       setIgnored((prev) => [...new Set([...prev, ...c.ignore!])]);
@@ -217,6 +221,12 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     } else {
       push("info", "cancelled");
     }
+  }
+
+  /** Promise-style confirm for the autofix loop; auto-approves in Autonomous mode. */
+  function confirmAsync(desc: string): Promise<boolean> {
+    if (autonomy === "auto") return Promise.resolve(true);
+    return new Promise((resolve) => setConfirm({ desc, resolve }));
   }
 
   async function execute(run: () => Promise<string>): Promise<void> {
@@ -395,6 +405,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         "  F1/F2/F3        chat · skill builder · mcp manager pages",
         "  /build <desc>   /create <name>: <purpose>",
         "  /mcp auto · /pull <model> · /tree [dir] · /diagnose <file>",
+        "  /autofix <file> [| cmd]  diagnose then patch + verify in a loop",
         "  /recommend · /install <name> · /models · /list",
         "  /yes apply pending · Ctrl+A autonomy · Ctrl+T thinking · /quit",
       ].forEach((l) => push("info", l));
@@ -506,7 +517,68 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       if (!arg) return push("err", "usage: /fix <logfile>");
       return diagnose(arg);
     }
+    if (cmd === "autofix") {
+      const [file, override] = arg.split("|").map((s) => s.trim());
+      if (!file) return push("err", "usage: /autofix <logfile> [| <verify command>]");
+      return autofix(file, override);
+    }
     push("err", `unknown command: /${cmd}  (try /help)`);
+  }
+
+  /** Diagnose a traceback, then run the gated auto-fix loop until it passes or caps out. */
+  async function autofix(file: string, override?: string): Promise<void> {
+    if (!provider || provider.kind === "none") {
+      return push("err", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }));
+    }
+    setBusy(true);
+    try {
+      const d = await engineDiagnose(file);
+      if (d.frames.length === 0 && !d.hint) {
+        push("err", "couldn't localize the error — need a traceback with a file/line or a known cause");
+        return;
+      }
+      const verify = override || inferVerifyCommand(d, home?.scan);
+      if (!verify) {
+        push("err", "couldn't infer a verify command — pass one: /autofix <file> | <command>");
+        return;
+      }
+      push("info", `${d.kind}: ${d.message}`);
+      push("info", `verify command: ${verify}`);
+      const result = await runAutofix(
+        { diagnosis: d, verifyCommand: verify },
+        {
+          callProvider: (p) => callProvider(p),
+          exec: (c) => runCommand(c, { cwd: process.cwd() }),
+          readFile: (p) => readIfExists(p),
+          applyPatch: async (target, edits) => {
+            try {
+              const cur = await readIfExists(target);
+              if (cur === null) return { ok: false, error: `file not found: ${target}` };
+              const next = applyEdits(cur, edits);
+              const stamp = new Date().toISOString();
+              await withRollback([target], stamp, async () => {
+                await cacheBackup(target, stamp);
+                await atomicWriteValidated(target, next);
+              });
+              return { ok: true };
+            } catch (e) {
+              return { ok: false, error: e instanceof Error ? e.message : String(e) };
+            }
+          },
+          confirm: confirmAsync,
+          log: (k, t) => push(k, t),
+        },
+      );
+      push(
+        result.status === "fixed" ? "ok" : "err",
+        `autofix ${result.status} — ${result.attempts} attempt(s), ${result.changedFiles.length} file(s) changed`,
+      );
+      await refresh();
+    } catch (e) {
+      push("err", e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function runPrompt(text: string): Promise<void> {
@@ -532,8 +604,17 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const footer = (
     <Footer label={provider?.label ?? "no-model"} status={provider?.status ?? "..."} autonomy={autonomy} thinking={thinking} />
   );
+  const hint = confirm
+    ? "Y approve   ·   N cancel"
+    : overlay
+      ? "type, then Enter to submit   ·   Esc to cancel"
+      : page === 2
+        ? "Up/Down select   ·   Enter run   ·   F1-F3 switch page   ·   Esc to chat"
+        : page === 3
+          ? "Tab switch focus   ·   Up/Down select   ·   Enter install/scan   ·   Esc to chat"
+          : "type a prompt or /command   ·   Shift+Tab plan   ·   Ctrl+A autonomy   ·   Ctrl+T thinking   ·   /help";
   return (
-    <Shell page={page} gradient={gradient} footer={footer} confirm={confirm ? <ConfirmBox desc={confirm.desc} /> : undefined}>
+    <Shell page={page} gradient={gradient} hint={hint} footer={footer} confirm={confirm ? <ConfirmBox desc={confirm.desc} /> : undefined}>
       {page === 1 && (
         <ChatPage
           home={home}
