@@ -8,7 +8,7 @@ import { WindsurfAdapter } from "./windsurf.js";
 import { RooAdapter } from "./roo.js";
 import type { Adapter, Detection } from "./types.js";
 
-/** All adapters inspo ships. Register new tools here. */
+/** All adapters perezdev ships. Register new tools here. */
 export function allAdapters(): Adapter[] {
   return [
     new ClaudeCodeAdapter(),

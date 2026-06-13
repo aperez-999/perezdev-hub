@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile, stat, copyFile, unlink } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { inspoDir } from "../core/config.js";
+import { perezdevDir } from "../core/config.js";
 
 /** Does a path exist? */
 export async function exists(path: string): Promise<boolean> {
@@ -28,33 +28,42 @@ export async function readIfExists(path: string): Promise<string | null> {
  */
 export async function atomicWrite(path: string, contents: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.inspo-tmp-${process.pid}`;
+  const tmp = `${path}.perezdev-tmp-${process.pid}`;
   await writeFile(tmp, contents, "utf8");
   await rename(tmp, path);
 }
 
+/** Current and legacy (former project name) sidecar backup suffixes. */
+const BACKUP_SUFFIX = ".perezdev.bak";
+const LEGACY_BACKUP_SUFFIX = ".inspo.bak";
+
 /**
- * Back up a file to `<path>.inspo.bak` if it exists and no backup exists yet.
+ * Back up a file to `<path>.perezdev.bak` if it exists and no backup exists yet.
  * Returns the backup path if one was created, else null.
  */
 export async function backup(path: string): Promise<string | null> {
   if (!(await exists(path))) return null;
-  const bak = `${path}.inspo.bak`;
+  const bak = `${path}${BACKUP_SUFFIX}`;
+  const legacy = `${path}${LEGACY_BACKUP_SUFFIX}`;
   if (await exists(bak)) return bak;
+  if (await exists(legacy)) return legacy;
   await copyFile(path, bak);
   return bak;
 }
 
 /**
- * Restore a `<path>.inspo.bak` backup over the original, removing the backup.
- * Returns true if a backup was restored.
+ * Restore a sidecar backup over the original, removing the backup. Recognizes
+ * both the current and legacy backup suffixes. Returns true if one was restored.
  */
 export async function restoreBackup(path: string): Promise<boolean> {
-  const bak = `${path}.inspo.bak`;
-  if (!(await exists(bak))) return false;
-  await copyFile(bak, path);
-  await unlink(bak);
-  return true;
+  for (const bak of [`${path}${BACKUP_SUFFIX}`, `${path}${LEGACY_BACKUP_SUFFIX}`]) {
+    if (await exists(bak)) {
+      await copyFile(bak, path);
+      await unlink(bak);
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Remove a file if it exists. No-op otherwise. */
@@ -67,7 +76,7 @@ export async function removeIfExists(path: string): Promise<boolean> {
 /** Copy a file to a timestamped backup in the app cache. Returns the backup path. */
 export async function cacheBackup(path: string, stamp: string): Promise<string | null> {
   if (!(await exists(path))) return null;
-  const dir = join(inspoDir(), "backups");
+  const dir = join(perezdevDir(), "backups");
   await mkdir(dir, { recursive: true });
   const dest = join(dir, `${basename(path)}.${stamp.replace(/[:.]/g, "-")}.bak`);
   await copyFile(path, dest);

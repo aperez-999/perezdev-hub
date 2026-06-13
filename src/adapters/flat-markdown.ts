@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { AgentSpec, ToolId } from "../core/agent-spec.js";
 import { exists, readIfExists, removeIfExists } from "../util/fs-safe.js";
 import type { Adapter, Detection, ManagedItem, PlannedFile } from "./types.js";
-import { buildInstructionMarkdown, commitFile, isInspoOwned, planFile, readVersion } from "./shared.js";
+import { buildInstructionMarkdown, commitFile, isOwned, planFile, readVersion } from "./shared.js";
 
 /**
  * Base for tools that consume a single markdown instruction file per agent in
@@ -45,7 +45,7 @@ export abstract class FlatMarkdownAdapter implements Adapter {
       if (!e.isFile() || !e.name.endsWith(".md")) continue;
       const path = join(this.agentsDir, e.name);
       const content = await readIfExists(path);
-      if (content && isInspoOwned(content)) {
+      if (content && isOwned(content)) {
         items.push({
           name: e.name.replace(/\.md$/, ""),
           tool: this.id,

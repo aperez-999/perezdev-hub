@@ -4,9 +4,9 @@ import { lockfilePath } from "./config.js";
 import { atomicWrite, readIfExists } from "../util/fs-safe.js";
 
 /**
- * The lockfile records every agent inspo has generated/installed and where.
+ * The lockfile records every agent perezdev has generated/installed and where.
  * It is the source of truth for `list`, `update`, and `remove` (the
- * "npm-for-agents" angle). Lives at ~/.config/inspo/inspo-lock.json.
+ * "npm-for-agents" angle). Lives at ~/.config/perezdev/perezdev-lock.json.
  */
 
 const lockEntrySchema = z.object({
