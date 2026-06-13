@@ -100,12 +100,12 @@ describe("fs-safe", () => {
     const f = join(dir, "f.txt");
     await writeFile(f, "original");
     const bak = await backup(f);
-    expect(bak).toBe(`${f}.inspo.bak`);
+    expect(bak).toBe(`${f}.perezdev.bak`);
     await atomicWrite(f, "modified");
     expect(await readFile(f, "utf8")).toBe("modified");
     expect(await restoreBackup(f)).toBe(true);
     expect(await readFile(f, "utf8")).toBe("original");
-    expect(await readIfExists(`${f}.inspo.bak`)).toBeNull();
+    expect(await readIfExists(`${f}.perezdev.bak`)).toBeNull();
   });
 
   it("previewDiff marks added lines for a new file", () => {

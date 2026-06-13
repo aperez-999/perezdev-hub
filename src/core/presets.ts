@@ -10,7 +10,7 @@ export interface Preset {
 
 /**
  * Curated agents so users can install something useful instantly
- * (`inspo create --preset code-reviewer`) without the wizard.
+ * (`perezdev create --preset code-reviewer`) without the wizard.
  */
 export const PRESETS: Preset[] = [
   {

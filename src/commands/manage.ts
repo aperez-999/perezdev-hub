@@ -87,7 +87,7 @@ async function agentActions(name: string): Promise<void> {
         await runUpdate(name, { bump: true });
         break;
       case "export":
-        await runExport(name, { out: `${name}.inspo.json` });
+        await runExport(name, { out: `${name}.perezdev.json` });
         break;
       case "remove":
         if (await removeFlow(name)) return; // agent gone — back to picker

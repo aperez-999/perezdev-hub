@@ -1,6 +1,6 @@
 import type { AgentSpec, ToolId } from "../core/agent-spec.js";
 
-/** A file inspo intends to write, for diff preview before committing. */
+/** A file perezdev intends to write, for diff preview before committing. */
 export interface PlannedFile {
   path: string;
   /** New full contents to write. */
@@ -12,7 +12,7 @@ export interface PlannedFile {
 /** Result of detecting whether a tool is installed/configured on the machine. */
 export interface Detection {
   installed: boolean;
-  /** Human note about where/how it was detected, for `inspo doctor`. */
+  /** Human note about where/how it was detected, for `perezdev doctor`. */
   detail: string;
 }
 
@@ -27,10 +27,10 @@ export interface ManagedItem {
 
 /**
  * An adapter translates the canonical AgentSpec into one tool's native format
- * and manages the lifecycle of items inspo created for that tool.
+ * and manages the lifecycle of items perezdev created for that tool.
  *
  * To support a new AI tool, implement this interface in one new file and
- * register it in registry.ts. That is the extensibility hinge of inspo.
+ * register it in registry.ts. That is the extensibility hinge of perezdev.
  */
 export interface Adapter {
   readonly id: ToolId;
@@ -55,7 +55,7 @@ export interface Adapter {
   /** Install `spec` (backs up, writes atomically). Returns files written. */
   write(spec: AgentSpec): Promise<PlannedFile[]>;
 
-  /** List items inspo manages for this tool. */
+  /** List items perezdev manages for this tool. */
   list(): Promise<ManagedItem[]>;
 
   /**

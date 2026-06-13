@@ -7,7 +7,7 @@ import type { Adapter, Detection, ManagedItem, PlannedFile } from "./types.js";
 import {
   buildSkillMarkdown,
   commitFile,
-  isInspoOwned,
+  isOwned,
   mergeMcpJson,
   planFile,
   pruneMcpJson,
@@ -60,7 +60,7 @@ export class CursorAdapter implements Adapter {
       if (!e.isFile() || !e.name.endsWith(".mdc")) continue;
       const path = join(this.rulesDir, e.name);
       const content = await readIfExists(path);
-      if (content && isInspoOwned(content)) {
+      if (content && isOwned(content)) {
         items.push({
           name: e.name.replace(/\.mdc$/, ""),
           tool: this.id,

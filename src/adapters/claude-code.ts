@@ -7,7 +7,7 @@ import type { Adapter, Detection, ManagedItem, PlannedFile } from "./types.js";
 import {
   buildSkillMarkdown,
   commitFile,
-  isInspoOwned,
+  isOwned,
   mergeMcpJson,
   planFile,
   pruneMcpJson,
@@ -63,7 +63,7 @@ export class ClaudeCodeAdapter implements Adapter {
       if (!e.isDirectory()) continue;
       const path = this.skillFile(e.name);
       const content = await readIfExists(path);
-      if (content && isInspoOwned(content)) {
+      if (content && isOwned(content)) {
         items.push({ name: e.name, tool: this.id, path, version: readVersion(content) });
       }
     }

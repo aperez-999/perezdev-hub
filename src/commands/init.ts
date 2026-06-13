@@ -1,17 +1,17 @@
 import { mkdir } from "node:fs/promises";
 import pc from "picocolors";
-import { inspoDir, hasAnthropicKey } from "../core/config.js";
+import { perezdevDir, hasAnthropicKey } from "../core/config.js";
 import { detectAll } from "../adapters/registry.js";
 import { p } from "../ui/prompts.js";
 
 /**
- * Detect installed AI tools and set up inspo's config dir. Does NOT modify
- * shell rc files or any tool config — it only creates ~/.config/inspo.
+ * Detect installed AI tools and set up perezdev's config dir. Does NOT modify
+ * shell rc files or any tool config — it only creates ~/.config/perezdev.
  */
 export async function runInit(): Promise<void> {
   p.intro(pc.bgCyan(pc.black(" perezdev init ")));
 
-  const dir = inspoDir();
+  const dir = perezdevDir();
   await mkdir(dir, { recursive: true });
   p.log.success(`Config dir ready: ${pc.bold(dir)}`);
 
