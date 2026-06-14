@@ -37,7 +37,7 @@ describe("ClaudeCodeAdapter", () => {
 
     const content = await readFile(skillPath, "utf8");
     expect(content).toContain("name: code-reviewer");
-    expect(content).toContain("x-inspo: true");
+    expect(content).toContain("x-perezdev: true");
     expect(content).toContain("Review code carefully.");
 
     const listed = await a.list();
@@ -66,7 +66,7 @@ describe("ClaudeCodeAdapter", () => {
     expect(after.mcpServers.filesystem).toBeUndefined();
   });
 
-  it("does not list non-inspo skills", async () => {
+  it("does not list skills it doesn't own", async () => {
     const { ClaudeCodeAdapter } = await import("../src/adapters/claude-code.js");
     const a = new ClaudeCodeAdapter();
     const dir = join(home, ".claude", "skills", "foreign");
@@ -77,6 +77,25 @@ describe("ClaudeCodeAdapter", () => {
   });
 });
 
+describe("frontmatter (dependency-free)", () => {
+  it("round-trips a tricky description and emits valid, quoted YAML", async () => {
+    const { buildSkillMarkdown, isOwned, readVersion } = await import("../src/adapters/shared.js");
+    const md = buildSkillMarkdown(
+      spec({ description: "use when CI fails: tracebacks, errors & flaky tests", version: "1.2.3" }),
+    );
+    // free-text scalars with YAML-significant chars are quoted, not broken across lines
+    expect(md).toMatch(/description: ".*CI fails: tracebacks, errors & flaky tests\."/);
+    expect(md).toMatch(/^---\nname: code-reviewer/);
+    expect(isOwned(md)).toBe(true);
+    expect(readVersion(md)).toBe("1.2.3");
+  });
+  it("still recognizes files stamped with the legacy x-inspo marker", async () => {
+    const { isOwned } = await import("../src/adapters/shared.js");
+    expect(isOwned("---\nname: old\nx-inspo: true\n---\nbody")).toBe(true);
+    expect(isOwned("---\nname: foreign\n---\nbody")).toBe(false);
+  });
+});
+
 describe("CursorAdapter", () => {
   it("writes a .mdc rule and lists it", async () => {
     const { CursorAdapter } = await import("../src/adapters/cursor.js");
@@ -84,7 +103,7 @@ describe("CursorAdapter", () => {
     const s = spec({ targets: ["cursor"] });
     await a.write(s);
     const rulePath = join(home, ".cursor", "rules", "code-reviewer.mdc");
-    expect(await readFile(rulePath, "utf8")).toContain("x-inspo: true");
+    expect(await readFile(rulePath, "utf8")).toContain("x-perezdev: true");
     const listed = await a.list();
     expect(listed[0]!.tool).toBe("cursor");
   });
@@ -97,7 +116,7 @@ describe("CodexAdapter (flat markdown)", () => {
     const s = spec({ targets: ["codex"] });
     await a.write(s);
     const f = join(home, ".codex", "prompts", "code-reviewer.md");
-    expect(await readFile(f, "utf8")).toContain("x-inspo: true");
+    expect(await readFile(f, "utf8")).toContain("x-perezdev: true");
     expect(await a.list()).toHaveLength(1);
     expect(await a.remove(s)).toBe(true);
     expect(await a.list()).toHaveLength(0);
@@ -111,7 +130,7 @@ describe("ClineAdapter (flat markdown)", () => {
     const s = spec({ targets: ["cline"] });
     await a.write(s);
     const f = join(home, ".clinerules", "code-reviewer.md");
-    expect(await readFile(f, "utf8")).toContain("x-inspo: true");
+    expect(await readFile(f, "utf8")).toContain("x-perezdev: true");
     expect(await a.list()).toHaveLength(1);
     expect(await a.remove(s)).toBe(true);
     expect(await a.list()).toHaveLength(0);
