@@ -5,8 +5,7 @@
   "type": "module",
   "bin": {
     "perezdev": "./dist/index.js",
-    "pdh": "./dist/index.js",
-    "inspo": "./dist/index.js"
+    "pdh": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -40,17 +39,16 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/USERNAME/perezdev-hub.git"
+    "url": "git+https://github.com/aperez-999/perezdev-hub.git"
   },
-  "homepage": "https://github.com/USERNAME/perezdev-hub#readme",
+  "homepage": "https://github.com/aperez-999/perezdev-hub#readme",
   "bugs": {
-    "url": "https://github.com/USERNAME/perezdev-hub/issues"
+    "url": "https://github.com/aperez-999/perezdev-hub/issues"
   },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
     "commander": "^12.1.0",
     "execa": "^9.5.1",
-    "gray-matter": "^4.0.3",
     "ink": "^5.1.0",
     "ink-gradient": "^3.0.0",
     "ink-spinner": "^5.0.0",
