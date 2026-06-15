@@ -20,14 +20,20 @@ export type LogFn = (kind: "info" | "ok" | "err", text: string) => void;
 export interface AutofixDeps {
   /** Ask the active LLM (local or cloud). */
   callProvider: (prompt: string) => Promise<string>;
-  /** Run a command (already denylist-guarded). */
+  /** Run the verify command (denylist-guarded; operator-supplied). */
   exec: (command: string) => Promise<ExecResult>;
+  /** Run an LLM-proposed dependency install (allowlisted, shell-free). */
+  execInstall: (command: string) => Promise<ExecResult>;
   /** Read a file's contents (null if missing). */
   readFile: (path: string) => Promise<string | null>;
   /** Apply edits to a file under backup/rollback; returns ok or an error message. */
   applyPatch: (file: string, edits: Edit[]) => Promise<{ ok: true } | { ok: false; error: string }>;
-  /** Gate a mutating action (Y/N). Resolves false to abort the loop. */
-  confirm: (desc: string) => Promise<boolean>;
+  /**
+   * Gate a mutating action (Y/N). `kind` lets the caller apply a stricter policy
+   * to shell-executing installs (e.g. never auto-approve under `--yes`). Resolves
+   * false to abort the loop.
+   */
+  confirm: (desc: string, kind: "install" | "patch") => Promise<boolean>;
   log: LogFn;
 }
 
@@ -107,10 +113,10 @@ export async function runAutofix(input: AutofixInput, deps: AutofixDeps): Promis
     }
 
     if (action.kind === "install") {
-      if (!(await deps.confirm(`run install: ${action.command}`))) {
+      if (!(await deps.confirm(`run install: ${action.command}`, "install"))) {
         return { status: "cancelled", attempts: attempt, changedFiles: [...changedFiles], commandsRun };
       }
-      const r = await deps.exec(action.command);
+      const r = await deps.execInstall(action.command);
       commandsRun.push(action.command);
       if (r.blocked) deps.log("err", r.blocked);
       else deps.log("info", `ran: ${action.command} (exit ${r.code})`);
@@ -121,7 +127,7 @@ export async function runAutofix(input: AutofixInput, deps: AutofixDeps): Promis
         .map((e) => `  - ${snip(e.find)}\n  + ${snip(e.replace)}`)
         .join("\n");
       const desc = `${head}\n${preview}`;
-      if (!(await deps.confirm(desc))) {
+      if (!(await deps.confirm(desc, "patch"))) {
         return { status: "cancelled", attempts: attempt, changedFiles: [...changedFiles], commandsRun };
       }
       const applied = await deps.applyPatch(action.file, action.edits);

@@ -58,13 +58,19 @@ export function parseFixAction(raw: string): FixAction {
   }
   if (kind === "patch") {
     if (typeof obj.file !== "string" || !obj.file.trim()) throw new Error("patch action missing 'file'");
+    // The model controls this path; keep it inside the project so a fix can't
+    // target ~/.ssh, shell rc files, or anything via an absolute/.. path.
+    const file = obj.file.trim();
+    if (file.startsWith("/") || file.startsWith("~") || /(^|[\\/])\.\.([\\/]|$)/.test(file)) {
+      throw new Error(`patch action targets a path outside the project: ${file}`);
+    }
     if (!Array.isArray(obj.edits) || obj.edits.length === 0) throw new Error("patch action missing 'edits'");
     const edits: Edit[] = obj.edits.map((e, i) => {
       const o = e as Record<string, unknown>;
       if (typeof o.find !== "string" || typeof o.replace !== "string") throw new Error(`patch edit ${i + 1} needs string find/replace`);
       return { find: o.find, replace: o.replace };
     });
-    return { kind, file: obj.file.trim(), edits, reason: str(obj.reason) };
+    return { kind, file, edits, reason: str(obj.reason) };
   }
   if (kind === "verify") return { kind, reason: str(obj.reason) };
   if (kind === "done") return { kind, reason: str(obj.reason) };
