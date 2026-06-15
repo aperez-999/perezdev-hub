@@ -1,11 +1,13 @@
 import { z } from "zod";
-import { agentSpecSchema, mcpDependencySchema, type AgentSpec } from "./agent-spec.js";
+import { agentSpecSchema, mcpDependencySchema, slugSchema } from "./agent-spec.js";
 import type { LockEntry, McpEntry } from "./lockfile.js";
 import type { RegistryMcpServer } from "../registry/index.js";
 
 const profileMcpSchema = z.object({
-  id: z.string(),
-  name: z.string(),
+  // Slug-constrained: this id becomes a lockfile key and feeds install, so an
+  // imported profile can't carry control chars or reserved keys.
+  id: slugSchema,
+  name: z.string().min(1).max(100),
   dependency: mcpDependencySchema,
 });
 
@@ -62,5 +64,3 @@ export function profileToServer(entry: ProfileMcp): RegistryMcpServer {
     env: entry.dependency.env,
   };
 }
-
-export const agentNames = (p: Profile): string[] => p.agents.map((a: AgentSpec) => a.name);
