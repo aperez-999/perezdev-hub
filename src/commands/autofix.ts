@@ -3,7 +3,7 @@ import * as p from "@clack/prompts";
 import { readIfExists, applyEdits, cacheBackup, atomicWriteValidated, withRollback } from "../util/fs-safe.js";
 import { engineRequest, Engine } from "../engine/bridge.js";
 import { scanProject } from "../core/scan.js";
-import { runCommand } from "../core/exec.js";
+import { runCommand, runInstall } from "../core/exec.js";
 import { promptActiveProvider } from "../core/provider-call.js";
 import { detectOllama } from "../core/ollama.js";
 import { resolveProvider, providerHint } from "../core/provider.js";
@@ -60,6 +60,7 @@ export async function runAutofixCommand(file?: string, opts: AutofixOptions = {}
       {
         callProvider: (prompt) => promptActiveProvider(engine, prompt),
         exec: (c) => runCommand(c, { cwd: process.cwd() }),
+        execInstall: (c) => runInstall(c, { cwd: process.cwd() }),
         readFile: (path) => readIfExists(path),
         applyPatch: async (target, edits) => {
           try {
@@ -76,10 +77,18 @@ export async function runAutofixCommand(file?: string, opts: AutofixOptions = {}
             return { ok: false, error: e instanceof Error ? e.message : String(e) };
           }
         },
-        confirm: async (desc) => {
+        confirm: async (desc, kind) => {
+          // Shell-executing installs are never auto-approved, even under --yes:
+          // a prompt-injected traceback must not be able to run commands headlessly.
+          if (kind === "install") {
+            if (!process.stdout.isTTY) {
+              console.log(pc.yellow(`  skipped install (needs interactive approval): ${desc}`));
+              return false;
+            }
+            return (await p.confirm({ message: desc })) === true;
+          }
           if (opts.yes) return true;
-          const ok = await p.confirm({ message: desc });
-          return ok === true;
+          return (await p.confirm({ message: desc })) === true;
         },
         log: (kind, t) => {
           const mark = kind === "ok" ? pc.green("✓") : kind === "err" ? pc.red("✗") : pc.cyan("•");
