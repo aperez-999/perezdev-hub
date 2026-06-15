@@ -45,7 +45,7 @@ describe("Console TUI", () => {
     expect(f).toMatch(/PerezDev Hub v2\.0/);
     expect(f).toMatch(/\[IDEs\]/);
     expect(f).toMatch(/\[CLIs\]/);
-    expect(f).toMatch(/Autonomy: manual/);
+    expect(f).toMatch(/autonomy manual/);
   });
 
   it("runs the /help slash command into the log stream", async () => {
@@ -77,7 +77,7 @@ describe("Console TUI", () => {
     );
     const { lastFrame } = render(<App />);
     await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/Autonomy: auto/);
+    expect(lastFrame()).toMatch(/autonomy auto/);
   }, 15000);
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
