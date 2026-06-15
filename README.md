@@ -81,6 +81,7 @@ In **Manual** autonomy any action that writes files pops an inline `[Y] Approve 
 | `/pull <model>` | Download an Ollama model (live progress) |
 | `/recommend` · `/install <name>` | Project-tailored suggestions, then install one |
 | `/tree [dir]` · `/diagnose <file>` | File-tree map · traceback diagnosis |
+| `/autofix <file> [\| cmd]` | Diagnose, then patch + verify in a gated loop until it passes |
 | `/models` · `/list` | Pulled models · installed agents & MCP servers |
 | `/yes` · `/clear` · `/help` · `/quit` | Apply pending action · clear log · help · exit |
 
@@ -115,6 +116,7 @@ The TUI is optional — every capability is scriptable:
 | `perezdev export <name>` | Export an agent as JSON (`--out <file>`) for sharing |
 | `perezdev import <file>` | Install a shared agent from JSON |
 | `perezdev fix [file]` | Diagnose a traceback → cause, `file:line`, and the fix |
+| `perezdev autofix [file]` | Diagnose, then patch + verify in a gated loop (`--verify <cmd>`, `-y`) |
 | `perezdev map [dir]` | Print a file-tree map (`-d` depth) |
 | `perezdev init` | Detect installed tools, set up `~/.config/perezdev` |
 | `perezdev doctor` | Diagnose config drift and broken installs |
@@ -148,6 +150,10 @@ ollama pull deepseek-r1     # reasoning (Planning slot)
 ```
 
 If `python3` or Ollama is missing, the affected feature reports a readable message and the rest of the app keeps working.
+
+## Auto-fix loop
+
+`perezdev autofix <file>` (or `/autofix` in the TUI) closes the loop on a failing program: it diagnoses the traceback, then asks the active model for one action at a time — a surgical search/replace **patch**, a dependency **install**, or a **verify** re-run — applies it under the same backup/rollback safeguards, re-runs the verify command, and repeats until the error clears or a 3-attempt cap is hit. Every mutating step is gated by the `[Y] Approve / [N] Cancel` dialog (auto-approved only in Autonomous mode), and a denylist refuses destructive commands (`rm -rf`, `sudo`, `curl | sh`, force-push, …) even then. The verify command is inferred from the error and your stack; override it with `--verify '<cmd>'` (CLI) or `/autofix <file> | <cmd>` (TUI).
 
 ## Safety
 
