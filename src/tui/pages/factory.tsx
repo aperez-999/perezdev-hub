@@ -72,15 +72,11 @@ export function FactoryPage({
         </Box>
       )}
 
-      {!overlay && !skills && (
-        <Text dimColor>{"\n↑↓ navigate · Enter select · Esc back to chat"}</Text>
-      )}
-
       {(busy || status) && !overlay && (
-        <Text>
-          {busy && <Text color={theme.accent}>building… </Text>}
-          {status && <Text color={theme.ok}>{`✔ ${status}`}</Text>}
-        </Text>
+        <Box marginTop={1}>
+          {busy && <Text color={theme.accent}>working… </Text>}
+          {status && <Text color={theme.ok}>{`✓ ${status}`}</Text>}
+        </Box>
       )}
     </Box>
   );
