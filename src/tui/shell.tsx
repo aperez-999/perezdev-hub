@@ -13,51 +13,58 @@ const HEADER = [
   " : . :::::...  ::.",
   "  ..  ..  ...   .",
 ];
-const DRULE = "═".repeat(70);
+const DRULE = "═".repeat(74);
 
-const TABS: { page: Page; label: string }[] = [
-  { page: 1, label: "[F1] 🤖 Chat Engine" },
-  { page: 2, label: "[F2] ⚙ Skill Builder" },
-  { page: 3, label: "[F3] 🔌 MCP Manager" },
+const TABS: { page: Page; key: string; label: string }[] = [
+  { page: 1, key: "F1", label: "Chat Engine" },
+  { page: 2, key: "F2", label: "Skill Builder" },
+  { page: 3, key: "F3", label: "MCP Manager" },
 ];
+const RULE = "─".repeat(74);
 
-/** Outer chrome: matrix header, tab bar, page body, and the live footer. */
+/** Outer chrome: matrix header, tab bar, page body, key hints, and the live footer. */
 export function Shell({
   page,
+  hint,
   footer,
   confirm,
   children,
   gradient,
 }: {
   page: Page;
+  hint?: string;
   footer: React.ReactNode;
   confirm?: React.ReactNode;
   children: React.ReactNode;
   gradient: string;
 }): React.ReactElement {
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={1} width={78}>
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={2} paddingY={1} width={80}>
       <Gradient name={gradient as never}>
         <Text>{HEADER.join("\n")}</Text>
       </Gradient>
+      <Text dimColor>PerezDev Hub v2.0</Text>
       <Text color={theme.accent}>{DRULE}</Text>
 
-      <Box>
-        {TABS.map((t, i) => (
-          <Text key={t.page} color={page === t.page ? theme.accentBright : theme.muted} bold={page === t.page}>
-            {`${i > 0 ? "  │  " : ""}${page === t.page ? "►" : " "}${t.label}`}
-          </Text>
-        ))}
+      <Box marginTop={1}>
+        {TABS.map((t, i) => {
+          const on = page === t.page;
+          return (
+            <Text key={t.page} color={on ? theme.accentBright : theme.muted} bold={on}>
+              {`${i > 0 ? "    " : ""}${on ? "[" : " "}${t.key}${on ? "]" : " "} ${t.label}`}
+            </Text>
+          );
+        })}
       </Box>
-      <Text dimColor>PerezDev Hub v2.0 · F1/F2/F3 switch pages · Esc back to chat</Text>
-      <Text dimColor>{"─".repeat(74)}</Text>
+      <Text dimColor>{RULE}</Text>
 
       <Box flexDirection="column" marginY={1}>
         {children}
         {confirm}
       </Box>
 
-      <Text dimColor>{"─".repeat(74)}</Text>
+      <Text dimColor>{RULE}</Text>
+      {hint ? <Text dimColor>{hint}</Text> : null}
       {footer}
     </Box>
   );
@@ -77,8 +84,8 @@ export function Footer({
 }): React.ReactElement {
   return (
     <Text>
-      <Text color={theme.accent}>◆ {label}</Text>
-      <Text dimColor>{`  │  F1-F3 page  │  Autonomy: ${autonomy}  │  Thinking: ${thinking}  │  ${status}`}</Text>
+      <Text color={theme.accent}>{`◆ ${label}`}</Text>
+      <Text dimColor>{`   autonomy ${autonomy}   ·   thinking ${thinking}   ·   ${status}`}</Text>
     </Text>
   );
 }
