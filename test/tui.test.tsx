@@ -14,6 +14,11 @@ beforeEach(async () => {
   await writeFile(join(cwd, "package.json"), JSON.stringify({ dependencies: { react: "18" } }));
   process.env.HOME = home;
   delete process.env.XDG_CONFIG_HOME;
+  // Pin to an unreachable Ollama + no cloud keys so UI tests are deterministic
+  // regardless of whether a model is running on the dev machine.
+  process.env.OLLAMA_HOST = "http://127.0.0.1:1";
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.OPENAI_API_KEY;
   process.chdir(cwd);
 });
 afterEach(async () => {
@@ -40,7 +45,7 @@ async function until(fn: () => boolean, timeout = 4000): Promise<void> {
 describe("Console TUI", () => {
   it("renders the bordered OpenDev console with header, badges, and stream", async () => {
     const { lastFrame } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
     expect(f).toMatch(/PerezDev Hub v2\.0/);
     expect(f).toMatch(/\[IDEs\]/);
@@ -50,7 +55,7 @@ describe("Console TUI", () => {
 
   it("runs the /help slash command into the log stream", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(1000); // let the engine/ollama detect settle
     await typeLine(stdin, "/help");
     await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
@@ -58,16 +63,16 @@ describe("Console TUI", () => {
 
   it("switches pages with function keys and Escape", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
-    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Create Custom Agent Skill/);
     stdin.write("OR"); // F3
-    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
     stdin.write(ESC); // Escape -> back to chat
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""), 4000);
+    await until(() => /activity/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("restores the last active tab from ~/.perezdevrc on boot", async () => {
@@ -76,16 +81,16 @@ describe("Console TUI", () => {
       JSON.stringify({ last_active_tab: 3, autonomy_mode: "auto", mcp_ignored_servers: [] }),
     );
     const { lastFrame } = render(<App />);
-    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/autonomy auto/);
   }, 15000);
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
     const f = lastFrame() ?? "";
     expect(f).toMatch(/Local Filesystem/);
     expect(f).toMatch(/PostgreSQL Database/);
@@ -95,10 +100,10 @@ describe("Console TUI", () => {
 
   it("F3 Enter on a directory item pops an install confirm", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /INDUSTRY SERVER DIRECTORY/.test(lastFrame() ?? ""), 4000);
+    await until(() => /mcp directory/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // install the highlighted (first) item
     await until(() => /install mcp filesystem/.test(lastFrame() ?? ""), 6000);
@@ -107,10 +112,10 @@ describe("Console TUI", () => {
 
   it("opens the Create Custom Agent overlay on F2 → Enter", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
-    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // Enter on first item
     await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);
@@ -139,10 +144,10 @@ describe("Console TUI", () => {
 
   it("F2 overlay → build → Y confirm generates the agent", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /AUTOMATION & LOG STREAM/.test(lastFrame() ?? ""));
+    await until(() => /activity/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
-    await until(() => /AGENT TOOLKIT/.test(lastFrame() ?? ""), 4000);
+    await until(() => /agent factory/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // Create Custom Agent → overlay
     await until(() => /Agent Goal:/.test(lastFrame() ?? ""), 4000);

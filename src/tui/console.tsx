@@ -229,10 +229,20 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     return new Promise((resolve) => setConfirm({ desc, resolve }));
   }
 
+  /** Report an install: summary line first (always visible), then a few short paths. */
+  function reportInstall(summary: string, paths: string[]): void {
+    push("ok", summary);
+    const homeDir = process.env.HOME || "";
+    const short = (p: string) => (homeDir && p.startsWith(homeDir) ? "~" + p.slice(homeDir.length) : p);
+    paths.slice(0, 4).forEach((p) => push("info", `  → ${short(p)}`));
+    if (paths.length > 4) push("info", `  → (+${paths.length - 4} more)`);
+  }
+
   async function execute(run: () => Promise<string>): Promise<void> {
     setBusy(true);
     try {
-      push("ok", await run());
+      const r = await run();
+      if (r) push("ok", r);
     } catch (err) {
       push("err", err instanceof Error ? err.message : String(err));
     } finally {
@@ -271,11 +281,14 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       setPartial("");
       setBusy(false);
     }
+    if (!body) {
+      push("info", "no model connected — wrote a template skill. Start Ollama or set a key for AI-generated.");
+    }
     return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
       const paths = await installDescribed(name, desc, targets, body);
       await refresh();
-      paths.forEach((p) => push("ok", `  → ${p}`));
-      return `built agent ${name} across ${targets.length} tool(s)${body ? " · AI-generated" : ""}`;
+      reportInstall(`built agent ${name} across ${targets.length} tool(s) · ${body ? "AI-generated" : "template"}`, paths);
+      return "";
     });
   }
 
@@ -288,8 +301,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     void guard(`install mcp ${server.id} → ${targets.join(", ")}`, async () => {
       const paths = await installCatalogMcp(server, targets);
       await refresh();
-      paths.forEach((p) => push("ok", `  → ${p}`));
-      return `installed mcp ${server.id} into ${paths.length} config(s)`;
+      reportInstall(`installed mcp ${server.id} into ${paths.length} config(s)`, paths);
+      return "";
     });
   }
 
@@ -321,8 +334,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     return guard(`inject mcp ${id} → ${targets.join(", ")}`, async () => {
       const paths = await installCustomMcp(id, req, parsed, targets);
       await refresh();
-      paths.forEach((p) => push("ok", `  → ${p}`));
-      return `injected mcp ${id} into ${paths.length} config(s)`;
+      reportInstall(`injected mcp ${id} into ${paths.length} config(s)`, paths);
+      return "";
     });
   }
 
@@ -361,8 +374,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         const paths = new Set<string>();
         for (const s of servers) (await installCatalogMcp(s, targets)).forEach((p) => paths.add(p));
         await refresh();
-        paths.forEach((p) => push("ok", `  → ${p}`));
-        return `injected ${sids.join(", ")} into ${paths.size} config(s)`;
+        reportInstall(`injected ${sids.join(", ")} into ${paths.size} config(s)`, [...paths]);
+        return "";
       },
       sids,
     );
@@ -451,16 +464,16 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       if (prop) return guard(`install agent ${prop.name} → ${targets.join(", ")}`, async () => {
         const paths = await installProposal(prop, targets);
         await refresh();
-        paths.forEach((p) => push("ok", `  → ${p}`));
-        return `installed agent ${prop.name} across ${targets.length} tool(s)`;
+        reportInstall(`installed agent ${prop.name} across ${targets.length} tool(s)`, paths);
+        return "";
       });
       if (sug) {
         const server = "server" in sug ? sug.server : sug;
         return guard(`install mcp ${server.id}`, async () => {
           const paths = await installCatalogMcp(server, targets);
           await refresh();
-          paths.forEach((p) => push("ok", `  → ${p}`));
-          return `installed mcp ${server.id} into ${paths.length} config(s)`;
+          reportInstall(`installed mcp ${server.id} into ${paths.length} config(s)`, paths);
+          return "";
         });
       }
       return push("err", `unknown suggestion '${arg}' — run /recommend`);
@@ -472,8 +485,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       return guard(`create agent ${name} → ${targets.join(", ")}`, async () => {
         const paths = await installDescribed(name!, purpose!, targets);
         await refresh();
-        paths.forEach((p) => push("ok", `  → ${p}`));
-        return `created agent ${name} across ${targets.length} tool(s)`;
+        reportInstall(`created agent ${name} across ${targets.length} tool(s)`, paths);
+        return "";
       });
     }
     if (cmd === "build") {
@@ -488,8 +501,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         return guard(`install mcp ${server.id}`, async () => {
           const paths = await installCatalogMcp(server, targets);
           await refresh();
-          paths.forEach((p) => push("ok", `  → ${p}`));
-          return `installed mcp ${server.id} into ${paths.length} config(s)`;
+          reportInstall(`installed mcp ${server.id} into ${paths.length} config(s)`, paths);
+          return "";
         });
       }
       return push("err", "usage: /mcp auto  |  /mcp <id>");
@@ -648,7 +661,11 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           onOverlaySubmit={onOverlaySubmit}
           skills={skills}
           results={log
-            .filter((l) => l.kind === "ok" && /^\s*→|built |installed |created |injected /.test(l.text))
+            .filter(
+              (l) =>
+                (l.kind === "ok" && /built |installed |created |injected /.test(l.text)) ||
+                (l.kind === "info" && /^\s*→/.test(l.text)),
+            )
             .slice(-6)
             .map((l) => l.text)}
           busy={busy}
