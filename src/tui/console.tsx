@@ -647,7 +647,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           setOverlayValue={(v) => setOverlay((o) => (o ? { ...o, value: v } : o))}
           onOverlaySubmit={onOverlaySubmit}
           skills={skills}
-          results={log.filter((l) => l.kind === "ok").slice(-5).map((l) => l.text)}
+          results={log
+            .filter((l) => l.kind === "ok" && /^\s*→|built |installed |created |injected /.test(l.text))
+            .slice(-6)
+            .map((l) => l.text)}
           busy={busy}
         />
       )}

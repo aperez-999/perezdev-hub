@@ -76,7 +76,9 @@ export async function runCreate(opts: CreateOptions = {}): Promise<void> {
     }
   }
 
-  await installSpec(spec, new Date().toISOString());
+  const written = await installSpec(spec, new Date().toISOString());
+  const paths = written.map((f) => `  ${pc.dim("→")} ${f.path}`).join("\n");
+  p.note(paths, "Wrote");
   p.outro(
     `${pc.green("✓")} Installed ${pc.bold(spec.name)} → ${spec.targets.join(", ")}.  ` +
       `${pc.dim(`perezdev list · perezdev show ${spec.name}`)}`,
