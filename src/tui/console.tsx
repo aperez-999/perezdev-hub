@@ -6,7 +6,7 @@ import { resolveProvider, providerHint } from "../core/provider.js";
 import { promptAnthropic, promptOpenAI } from "../core/cloud.js";
 import { readIfExists, applyEdits, cacheBackup, atomicWriteValidated, withRollback } from "../util/fs-safe.js";
 import { runAutofix, inferVerifyCommand } from "../core/autofix.js";
-import { runCommand } from "../core/exec.js";
+import { runCommand, runInstall } from "../core/exec.js";
 import {
   loadHome,
   installProposal,
@@ -21,7 +21,7 @@ import {
 import { slugSchema } from "../core/agent-spec.js";
 import { skillMetaprompt, mcpMetaprompt, parseMcpConfig } from "../core/metaprompt.js";
 import type { Provider } from "../core/provider.js";
-import { loadRc, saveRc } from "../core/rc.js";
+import { loadRc, saveRc, type PerezRc } from "../core/rc.js";
 import {
   ConfirmBox,
   type Autonomy,
@@ -74,6 +74,8 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
   const [mcpInput, setMcpInput] = useState("");
   const [ignored, setIgnored] = useState<string[]>([]);
   const rcLoaded = useRef(false);
+  // Persisted prefs the TUI doesn't edit but must not clobber on save.
+  const prefsRef = useRef<{ default_targets?: PerezRc["default_targets"]; default_provider?: PerezRc["default_provider"] }>({});
 
   const push = (kind: LogKind, text: string) => setLog((l) => [...l, { kind, text }].slice(-200));
 
@@ -104,14 +106,21 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       setPage(rc.last_active_tab);
       setAutonomy(rc.autonomy_mode);
       setIgnored(rc.mcp_ignored_servers);
+      prefsRef.current = { default_targets: rc.default_targets, default_provider: rc.default_provider };
       rcLoaded.current = true;
     });
   }, []);
 
   // Persist preferences whenever they change (after the initial load). Best-effort.
+  // Spread prefsRef so fields the TUI doesn't manage (default_targets/provider) survive.
   useEffect(() => {
     if (!rcLoaded.current) return;
-    void saveRc({ last_active_tab: page, autonomy_mode: autonomy, mcp_ignored_servers: ignored }).catch(() => {});
+    void saveRc({
+      ...prefsRef.current,
+      last_active_tab: page,
+      autonomy_mode: autonomy,
+      mcp_ignored_servers: ignored,
+    }).catch(() => {});
   }, [page, autonomy, ignored]);
 
   // Function keys are stripped by Ink's useInput, so route them off raw stdin.
@@ -127,7 +136,9 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     };
   }, [stdin]);
 
-  const provider = status ? resolveProvider(status, mode === "plan" ? "thinking" : "normal") : null;
+  const provider = status
+    ? resolveProvider(status, mode === "plan" ? "thinking" : "normal", prefsRef.current.default_provider)
+    : null;
   const targets = home?.targets ?? [];
 
   function goto(p: Page): void {
@@ -571,6 +582,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
         {
           callProvider: (p) => callProvider(p),
           exec: (c) => runCommand(c, { cwd: process.cwd() }),
+          execInstall: (c) => runInstall(c, { cwd: process.cwd() }),
           readFile: (p) => readIfExists(p),
           applyPatch: async (target, edits) => {
             try {

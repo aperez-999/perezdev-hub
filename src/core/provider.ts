@@ -11,19 +11,39 @@ const CLOUD = {
   openai: { model: "gpt-4o-mini", label: "gpt-4o-mini" },
 };
 
-/**
- * Pick the backend: a local Ollama model if one is pulled, else a cloud model
- * if an API key is present, else nothing (with a reason for the footer).
- */
-export function resolveProvider(status: OllamaStatus, slot: "normal" | "thinking" = "normal"): Provider {
-  const local = slot === "thinking" ? status.thinking : status.normal;
-  if (status.available && local) return { kind: "local", model: local, label: local, status: "ollama up" };
-
+function cloudProvider(): Provider | null {
   if (process.env.ANTHROPIC_API_KEY) {
     return { kind: "cloud", vendor: "anthropic", ...CLOUD.anthropic, status: "cloud active" };
   }
   if (process.env.OPENAI_API_KEY) {
     return { kind: "cloud", vendor: "openai", ...CLOUD.openai, status: "cloud active" };
+  }
+  return null;
+}
+
+/**
+ * Pick the backend: a local Ollama model if one is pulled, else a cloud model
+ * if an API key is present, else nothing (with a reason for the footer).
+ * `prefer: "cloud"` flips the order — a cloud key wins even when Ollama is up
+ * (honors `.perezdevrc` `default_provider`); it still falls back to local.
+ */
+export function resolveProvider(
+  status: OllamaStatus,
+  slot: "normal" | "thinking" = "normal",
+  prefer?: "local" | "cloud",
+): Provider {
+  const local = slot === "thinking" ? status.thinking : status.normal;
+  const localProvider: Provider | null =
+    status.available && local ? { kind: "local", model: local, label: local, status: "ollama up" } : null;
+
+  if (prefer === "cloud") {
+    const cloud = cloudProvider();
+    if (cloud) return cloud;
+    if (localProvider) return localProvider;
+  } else {
+    if (localProvider) return localProvider;
+    const cloud = cloudProvider();
+    if (cloud) return cloud;
   }
 
   if (status.available) return { kind: "none", label: "no-model", status: "no models found", reason: "no-models" };

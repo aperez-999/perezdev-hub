@@ -1,14 +1,14 @@
 import pc from "picocolors";
-import { detectAll } from "../adapters/registry.js";
 import { slugSchema, TOOL_IDS, type McpDependency, type ToolId } from "../core/agent-spec.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
 import { getPreset } from "../core/presets.js";
 import { hasAnthropicKey } from "../core/config.js";
 import { installSpec, planSpec } from "../core/install.js";
+import { resolveTargets, type ResolvedTargets } from "../core/targets.js";
 import { synthesizeInstructions } from "../llm/synthesize.js";
 import { p, guardCancel, renderDiff } from "../ui/prompts.js";
 
-/** Flags accepted by `inspo create` for quick / non-interactive use. */
+/** Flags accepted by `perezdev create` for quick / non-interactive use. */
 export interface CreateOptions {
   name?: string;
   purpose?: string;
@@ -17,19 +17,10 @@ export interface CreateOptions {
   preset?: string;
   advanced?: boolean;
   yes?: boolean;
+  dryRun?: boolean;
 }
 
 const isTty = Boolean(process.stdout.isTTY);
-
-/** Parse a comma list of tool ids, keeping only valid ones. Empty → undefined. */
-function resolveTargets(csv?: string): ToolId[] | undefined {
-  if (!csv) return undefined;
-  const ids = csv
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is ToolId => (TOOL_IDS as readonly string[]).includes(s));
-  return ids.length > 0 ? ids : undefined;
-}
 
 /** Derive a clean role noun-phrase from the agent name (e.g. "a code reviewer agent"). */
 function deriveRole(name: string): string {
@@ -46,11 +37,8 @@ function splitItems(raw: string): string[] {
 export async function runCreate(opts: CreateOptions = {}): Promise<void> {
   p.intro(pc.bgCyan(pc.black(" perezdev create ")));
 
-  const detected = await detectAll();
-  const installedIds = detected.filter((d) => d.detection.installed).map((d) => d.adapter.id);
-  const defaultTargets: ToolId[] = installedIds.length > 0 ? installedIds : [...TOOL_IDS];
-
-  const input = await buildInput(opts, defaultTargets);
+  const resolved = await resolveTargets(opts.target);
+  const input = await buildInput(opts, resolved);
 
   // LLM-enhance the body when a key is present; else deterministic template.
   let override: string | undefined;
@@ -63,6 +51,12 @@ export async function runCreate(opts: CreateOptions = {}): Promise<void> {
   }
 
   const spec = generateSpec(input, override);
+
+  if (opts.dryRun) {
+    p.note(renderDiff(await planSpec(spec)), "Files to write");
+    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install '${spec.name}'.`));
+    return;
+  }
 
   const auto = opts.yes === true || !isTty;
   if (!auto) {
@@ -86,15 +80,19 @@ export async function runCreate(opts: CreateOptions = {}): Promise<void> {
 }
 
 /** Resolve a GenerateInput from preset, flags, and/or interactive prompts. */
-async function buildInput(opts: CreateOptions, defaultTargets: ToolId[]): Promise<GenerateInput> {
-  // 1. Preset — fully formed; only targets may come from a flag.
+async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promise<GenerateInput> {
+  const defaultTargets = resolved.targets;
+  // A flag or an .perezdevrc default already picked targets — don't ask again.
+  const targetsChosen = resolved.source === "flag" || resolved.source === "rc";
+
+  // 1. Preset — fully formed; only targets may come from a flag/rc.
   if (opts.preset) {
     const preset = getPreset(opts.preset);
     if (!preset) {
       p.cancel(`Unknown preset '${opts.preset}'. Run ${pc.cyan("perezdev presets")} to list them.`);
       process.exit(1);
     }
-    return { ...preset.input, targets: resolveTargets(opts.target) ?? defaultTargets };
+    return { ...preset.input, targets: defaultTargets };
   }
 
   // 2. Flags supply name + purpose → quick, no prompts (defaults for the rest).
@@ -111,7 +109,7 @@ async function buildInput(opts: CreateOptions, defaultTargets: ToolId[]): Promis
       behaviors: [],
       allowedTools: [],
       mcpDependencies: [],
-      targets: resolveTargets(opts.target) ?? defaultTargets,
+      targets: defaultTargets,
     };
   }
 
@@ -136,16 +134,19 @@ async function buildInput(opts: CreateOptions, defaultTargets: ToolId[]): Promis
       }),
     );
 
-  const targets = guardCancel(
-    await p.multiselect({
-      message: "Install to",
-      options: defaultTargets.length
-        ? buildTargetOptions(defaultTargets)
-        : buildTargetOptions([...TOOL_IDS]),
-      initialValues: defaultTargets,
-      required: true,
-    }),
-  ) as ToolId[];
+  // Skip the target prompt entirely when a flag or rc default already chose.
+  const targets = targetsChosen
+    ? defaultTargets
+    : (guardCancel(
+        await p.multiselect({
+          message: "Install to",
+          options: defaultTargets.length
+            ? buildTargetOptions(defaultTargets)
+            : buildTargetOptions([...TOOL_IDS]),
+          initialValues: defaultTargets,
+          required: true,
+        }),
+      ) as ToolId[]);
 
   // Optional advanced step — off unless asked, so the common path stays fast.
   let behaviors: string[] = [];
