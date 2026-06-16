@@ -2,9 +2,8 @@ import pc from "picocolors";
 import { STACKS, getStack } from "../registry/index.js";
 
 const STACK_IDS = STACKS.map((s) => s.id);
-import { TOOL_IDS, type ToolId } from "../core/agent-spec.js";
-import { detectAll } from "../adapters/registry.js";
 import { installStack, planStack } from "../core/stack.js";
+import { resolveTargets } from "../core/targets.js";
 import { p, guardCancel, renderDiff } from "../ui/prompts.js";
 
 const isTty = Boolean(process.stdout.isTTY);
@@ -12,15 +11,7 @@ const isTty = Boolean(process.stdout.isTTY);
 export interface StackOptions {
   target?: string;
   yes?: boolean;
-}
-
-function resolveTargets(csv?: string): ToolId[] | undefined {
-  if (!csv) return undefined;
-  const ids = csv
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is ToolId => (TOOL_IDS as readonly string[]).includes(s));
-  return ids.length > 0 ? ids : undefined;
+  dryRun?: boolean;
 }
 
 /** Install a stack: skill presets + MCP servers across detected tools. */
@@ -33,9 +24,13 @@ export async function runStackInstall(id: string, opts: StackOptions = {}): Prom
     process.exit(1);
   }
 
-  const detected = await detectAll();
-  const installedIds = detected.filter((d) => d.detection.installed).map((d) => d.adapter.id);
-  const targets = resolveTargets(opts.target) ?? (installedIds.length > 0 ? installedIds : [...TOOL_IDS]);
+  const { targets } = await resolveTargets(opts.target);
+
+  if (opts.dryRun) {
+    p.note(renderDiff(await planStack(stack, targets)), `Stack: ${stack.id}`);
+    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install stack '${stack.id}'.`));
+    return;
+  }
 
   const auto = opts.yes === true || !isTty;
   if (!auto) {

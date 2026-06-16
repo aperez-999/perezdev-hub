@@ -1,12 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import pc from "picocolors";
 import * as p from "@clack/prompts";
-import { TOOL_IDS, type ToolId } from "../core/agent-spec.js";
-import { detectAll } from "../adapters/registry.js";
 import { listEntries, listMcpEntries, getAgentSpec, getMcpEntry } from "../core/lockfile.js";
-import { installSpec } from "../core/install.js";
-import { installMcpServer } from "../core/mcp-install.js";
+import { installSpec, planSpec } from "../core/install.js";
+import { installMcpServer, planMcpServer } from "../core/mcp-install.js";
+import { resolveTargets } from "../core/targets.js";
 import { readIfExists } from "../util/fs-safe.js";
+import { renderDiff } from "../ui/prompts.js";
+import type { PlannedFile } from "../adapters/types.js";
 import { buildProfile, parseProfile, profileToServer, type Profile } from "../core/profile.js";
 
 interface ExportOpts {
@@ -16,21 +17,43 @@ interface ImportOpts {
   target?: string;
   yes?: boolean;
   force?: boolean;
+  dryRun?: boolean;
+}
+interface ShowOpts {
+  json?: boolean;
 }
 
-function resolveTargets(csv?: string): ToolId[] | undefined {
-  if (!csv) return undefined;
-  const ids = csv
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is ToolId => (TOOL_IDS as readonly string[]).includes(s));
-  return ids.length > 0 ? ids : undefined;
+/**
+ * Reject URLs pointing at loopback, link-local (incl. cloud metadata at
+ * 169.254.169.254), or private ranges so a profile URL can't be used to probe
+ * internal services. Hostname-only check — paired with disabled redirects below.
+ */
+function assertPublicUrl(url: URL): void {
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  const blockedNames = host === "localhost" || host.endsWith(".local") || host.endsWith(".internal");
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  let blockedIp = false;
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    blockedIp =
+      a === 127 || a === 0 || a === 10 || // loopback, "this host", private
+      (a === 169 && b === 254) || // link-local / cloud metadata
+      (a === 172 && b >= 16 && b <= 31) || // private
+      (a === 192 && b === 168); // private
+  }
+  const blockedV6 = host === "::1" || host === "::" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80");
+  if (blockedNames || blockedIp || blockedV6) {
+    throw new Error(`refused: '${url.hostname}' is a local/private address`);
+  }
 }
 
 /** Resolve a profile reference (http(s) URL or local file) to its text. */
 async function readRef(ref: string): Promise<string> {
   if (/^https?:\/\//.test(ref)) {
-    const res = await fetch(ref);
+    const url = new URL(ref);
+    assertPublicUrl(url);
+    // No redirect following: a public URL could otherwise 30x to a private host.
+    const res = await fetch(url, { redirect: "error" });
     if (!res.ok) throw new Error(`fetch failed (${res.status}) for ${ref}`);
     return res.text();
   }
@@ -65,8 +88,12 @@ function summarize(profile: Profile): string {
 }
 
 /** Preview a profile without installing anything. */
-export async function runProfileShow(ref: string): Promise<void> {
+export async function runProfileShow(ref: string, opts: ShowOpts = {}): Promise<void> {
   const profile = parseProfile(await readRef(ref));
+  if (opts.json) {
+    console.log(JSON.stringify(profile, null, 2));
+    return;
+  }
   console.log(`\n  ${pc.bold(profile.name)}${profile.createdAt ? pc.dim(`  (${profile.createdAt})`) : ""}`);
   console.log(summarize(profile) + "\n");
 }
@@ -82,9 +109,17 @@ export async function runProfileImport(ref: string, opts: ImportOpts = {}): Prom
     process.exit(1);
   }
 
-  const detected = await detectAll();
-  const installedIds = detected.filter((d) => d.detection.installed).map((d) => d.adapter.id);
-  const targets = resolveTargets(opts.target) ?? (installedIds.length > 0 ? installedIds : [...TOOL_IDS]);
+  const { targets } = await resolveTargets(opts.target);
+
+  if (opts.dryRun) {
+    const planned: PlannedFile[] = [];
+    for (const spec of profile.agents) planned.push(...(await planSpec({ ...spec, targets })));
+    for (const entry of profile.mcp) planned.push(...(await planMcpServer(profileToServer(entry), targets)));
+    p.note(summarize(profile), `Profile: ${profile.name}`);
+    p.note(renderDiff(planned), "Files to write");
+    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install to ${targets.join(", ")}.`));
+    return;
+  }
 
   p.note(summarize(profile), `Profile: ${profile.name}`);
   if (!opts.yes && process.stdout.isTTY) {
