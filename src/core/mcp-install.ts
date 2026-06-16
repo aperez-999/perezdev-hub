@@ -6,6 +6,21 @@ import { atomicWriteValidated, cacheBackup, readIfExists, validateJson, withRoll
 import { getMcpEntry, listMcpEntries, removeMcpEntry, upsertMcpEntry } from "./lockfile.js";
 import type { RegistryMcpServer } from "../registry/index.js";
 
+/** Confirm a server id actually landed under `mcpServers` in the written config. */
+async function verifyMcpWritten(path: string, id: string): Promise<void> {
+  const raw = await readIfExists(path);
+  if (raw === null) throw new Error(`MCP install verification failed: ${path} was not written`);
+  let parsed: { mcpServers?: Record<string, unknown> };
+  try {
+    parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> };
+  } catch {
+    throw new Error(`MCP install verification failed: ${path} is not valid JSON`);
+  }
+  if (!parsed.mcpServers || !(id in parsed.mcpServers)) {
+    throw new Error(`MCP install verification failed: '${id}' missing from ${path}`);
+  }
+}
+
 /** Convert a catalog MCP server into the MCP dependency form tools store. */
 export function toDependency(server: RegistryMcpServer): McpDependency {
   return { name: server.id, command: server.command, args: server.args, env: server.env ?? {} };
@@ -56,6 +71,7 @@ export async function installMcpServer(
       for (const { path } of supported) {
         await cacheBackup(path, now);
         await atomicWriteValidated(path, await mergeMcpJson(path, [dep]), validateJson);
+        await verifyMcpWritten(path, server.id);
       }
     },
   );
