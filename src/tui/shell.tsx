@@ -50,8 +50,13 @@ export function Shell({
         {TABS.map((t, i) => {
           const on = page === t.page;
           return (
-            <Text key={t.page} color={on ? theme.accentBright : theme.muted} bold={on}>
-              {`${i > 0 ? "    " : ""}${on ? "[" : " "}${t.key}${on ? "]" : " "} ${t.label}`}
+            <Text key={t.page}>
+              {i > 0 ? <Text dimColor>{"  "}</Text> : null}
+              {on ? (
+                <Text backgroundColor={theme.accent} color="black" bold>{` ${t.key} ${t.label} `}</Text>
+              ) : (
+                <Text dimColor>{` ${t.key} ${t.label} `}</Text>
+              )}
             </Text>
           );
         })}

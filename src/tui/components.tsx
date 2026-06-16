@@ -12,6 +12,16 @@ export interface LogLine {
   text: string;
 }
 
+/** A consistent section heading: a colored accent bar + a soft label. */
+export function SectionHeader({ label }: { label: string }): React.ReactElement {
+  return (
+    <Text>
+      <Text color={theme.accent}>{"▌ "}</Text>
+      <Text bold color={theme.accentBright}>{label}</Text>
+    </Text>
+  );
+}
+
 /** One styled log line in the automation stream. */
 export function Row({ line }: { line: LogLine }): React.ReactElement {
   if (line.kind === "user") return <Text color={theme.accentBright}>{`› ${line.text}`}</Text>;

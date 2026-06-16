@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Row, type LogLine } from "../components.js";
+import { Row, SectionHeader, type LogLine } from "../components.js";
 import type { HomeData } from "../data.js";
 
 export type McpFocus = "list" | "button" | "input";
@@ -48,7 +48,7 @@ export function McpPage({
   const registered = new Set((home?.mcp ?? []).map((m) => m.id));
   return (
     <Box flexDirection="column">
-      <Text bold color={theme.accent}>INDUSTRY SERVER DIRECTORY</Text>
+      <SectionHeader label="mcp directory" />
       <Box flexDirection="column" marginTop={1}>
         {MCP_DIRECTORY.map((it, i) => {
           const on = focus === "list" && i === sel;
@@ -88,7 +88,7 @@ export function McpPage({
       </Box>
 
       <Box flexDirection="column" marginTop={1} height={5}>
-        <Text bold color={theme.accent}>[MCP STAGING STREAM]</Text>
+        <SectionHeader label="staging" />
         {staging.slice(-3).map((l, i) => (
           <Row key={i} line={l} />
         ))}
