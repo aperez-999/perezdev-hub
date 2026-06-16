@@ -6,15 +6,6 @@ import type { Autonomy, Thinking } from "./components.js";
 
 export type Page = 1 | 2 | 3;
 
-const HEADER = [
-  "  .  :  .:::..  .:::",
-  " . ... :::: ..:::::",
-  " P E R E Z D E V   H U B",
-  " : . :::::...  ::.",
-  "  ..  ..  ...   .",
-];
-const DRULE = "═".repeat(74);
-
 const TABS: { page: Page; key: string; label: string }[] = [
   { page: 1, key: "F1", label: "Chat Engine" },
   { page: 2, key: "F2", label: "Skill Builder" },
@@ -40,11 +31,12 @@ export function Shell({
 }): React.ReactElement {
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.accent} paddingX={2} paddingY={1} width={80}>
-      <Gradient name={gradient as never}>
-        <Text>{HEADER.join("\n")}</Text>
-      </Gradient>
-      <Text dimColor>PerezDev Hub v2.0</Text>
-      <Text color={theme.accent}>{DRULE}</Text>
+      <Text>
+        <Gradient name={gradient as never}>
+          <Text bold>PerezDev Hub</Text>
+        </Gradient>
+        <Text dimColor>{" v2.0"}</Text>
+      </Text>
 
       <Box marginTop={1}>
         {TABS.map((t, i) => {

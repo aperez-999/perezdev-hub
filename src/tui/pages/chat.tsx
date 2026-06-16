@@ -31,12 +31,12 @@ export function ChatPage({
   submit: (s: string) => void;
   inputActive: boolean;
 }): React.ReactElement {
-  const recent = log.slice(-12);
+  const recent = log.slice(-11);
   return (
     <Box flexDirection="column">
       <Badges home={home} ollama={status?.available ?? false} />
 
-      <Box flexDirection="column" marginTop={1} height={14}>
+      <Box flexDirection="column" marginTop={1} height={12}>
         <SectionHeader label="activity" />
         {recent.map((l, i) => (
           <Row key={i} line={l} />
@@ -51,14 +51,8 @@ export function ChatPage({
         )}
       </Box>
 
-      <Box marginTop={1}>
-        <Text color={mode === "plan" ? theme.warn : theme.muted}>
-          {`${mode === "plan" ? "Planning" : "Normal"} mode `}
-          {"─".repeat(60)}
-        </Text>
-      </Box>
-      <Box borderStyle="round" borderColor={inputActive ? theme.accent : theme.muted} paddingX={1}>
-        <Text color={theme.accentBright}>{"› "}</Text>
+      <Box marginTop={1} borderStyle="round" borderColor={inputActive ? theme.accent : theme.muted} paddingX={1}>
+        <Text color={mode === "plan" ? theme.warn : theme.accentBright}>{mode === "plan" ? "plan › " : "› "}</Text>
         <TextInput
           value={input}
           onChange={setInput}
