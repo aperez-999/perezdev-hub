@@ -58,6 +58,12 @@ function snippet(text: string | null, line: number, radius = 8): string | null {
     .join("\n");
 }
 
+/** First line of a snippet, truncated, for a compact diff preview. */
+function snip(s: string): string {
+  const first = s.split("\n")[0] ?? "";
+  return first.length > 60 ? first.slice(0, 57) + "..." : first;
+}
+
 function passed(out: ExecResult, errorSignature: string): boolean {
   if (out.code !== 0) return false;
   const sig = errorSignature.trim();
@@ -109,7 +115,12 @@ export async function runAutofix(input: AutofixInput, deps: AutofixDeps): Promis
       if (r.blocked) deps.log("err", r.blocked);
       else deps.log("info", `ran: ${action.command} (exit ${r.code})`);
     } else if (action.kind === "patch") {
-      const desc = `patch ${action.file} (${action.edits.length} edit${action.edits.length > 1 ? "s" : ""})${action.reason ? ` — ${action.reason}` : ""}`;
+      const head = `patch ${action.file} (${action.edits.length} edit${action.edits.length > 1 ? "s" : ""})${action.reason ? ` — ${action.reason}` : ""}`;
+      const preview = action.edits
+        .slice(0, 2)
+        .map((e) => `  - ${snip(e.find)}\n  + ${snip(e.replace)}`)
+        .join("\n");
+      const desc = `${head}\n${preview}`;
       if (!(await deps.confirm(desc))) {
         return { status: "cancelled", attempts: attempt, changedFiles: [...changedFiles], commandsRun };
       }
