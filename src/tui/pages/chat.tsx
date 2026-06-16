@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Badges, Row, type LogLine, type Mode } from "../components.js";
+import { Badges, Row, SectionHeader, type LogLine, type Mode } from "../components.js";
 import type { HomeData } from "../data.js";
 import type { OllamaStatus } from "../../core/ollama.js";
 
@@ -37,7 +37,7 @@ export function ChatPage({
       <Badges home={home} ollama={status?.available ?? false} />
 
       <Box flexDirection="column" marginTop={1} height={14}>
-        <Text bold color={theme.accent}>[AUTOMATION &amp; LOG STREAM]</Text>
+        <SectionHeader label="activity" />
         {recent.map((l, i) => (
           <Row key={i} line={l} />
         ))}

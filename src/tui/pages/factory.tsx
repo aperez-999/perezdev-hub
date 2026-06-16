@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
+import { SectionHeader } from "../components.js";
 
 export interface FactoryItem {
   label: string;
@@ -39,7 +40,7 @@ export function FactoryPage({
 }): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text bold color={theme.accent}>SELECT AN ACTION FROM THE AGENT TOOLKIT:</Text>
+      <SectionHeader label="agent factory" />
       <Box flexDirection="column" marginTop={1}>
         {FACTORY_ITEMS.map((it, i) => {
           const on = i === sel;
@@ -61,7 +62,7 @@ export function FactoryPage({
 
       {skills && !overlay && (
         <Box flexDirection="column" marginTop={1}>
-          <Text bold color={theme.accent}>PROJECT SKILLS:</Text>
+          <SectionHeader label="project skills" />
           {skills.length === 0 ? (
             <Text dimColor>  none installed yet — use Create Custom Agent</Text>
           ) : (
