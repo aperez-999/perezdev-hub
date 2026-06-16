@@ -64,8 +64,13 @@ export function Shell({
       </Box>
 
       <Text dimColor>{RULE}</Text>
-      {hint ? <Text dimColor>{hint}</Text> : null}
-      {footer}
+      {hint ? (
+        <Box marginTop={1}>
+          <Text color={theme.muted}>{"  keys  "}</Text>
+          <Text dimColor>{hint}</Text>
+        </Box>
+      ) : null}
+      <Box marginTop={1}>{footer}</Box>
     </Box>
   );
 }

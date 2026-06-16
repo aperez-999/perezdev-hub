@@ -51,10 +51,12 @@ export function ChatPage({
         )}
       </Box>
 
-      <Text color={mode === "plan" ? theme.warn : theme.muted}>
-        {`─── ${mode === "plan" ? "Planning" : "Normal"} Mode (Shift+Tab) `}
-        {"─".repeat(40)}
-      </Text>
+      <Box marginTop={1}>
+        <Text color={mode === "plan" ? theme.warn : theme.muted}>
+          {`${mode === "plan" ? "Planning" : "Normal"} mode `}
+          {"─".repeat(60)}
+        </Text>
+      </Box>
       <Box borderStyle="round" borderColor={inputActive ? theme.accent : theme.muted} paddingX={1}>
         <Text color={theme.accentBright}>{"› "}</Text>
         <TextInput
