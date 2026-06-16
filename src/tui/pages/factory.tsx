@@ -26,7 +26,7 @@ export function FactoryPage({
   setOverlayValue,
   onOverlaySubmit,
   skills,
-  status,
+  results,
   busy,
 }: {
   sel: number;
@@ -34,7 +34,7 @@ export function FactoryPage({
   setOverlayValue: (s: string) => void;
   onOverlaySubmit: (s: string) => void;
   skills: string[] | null;
-  status: string | null;
+  results: string[];
   busy: boolean;
 }): React.ReactElement {
   return (
@@ -72,10 +72,15 @@ export function FactoryPage({
         </Box>
       )}
 
-      {(busy || status) && !overlay && (
-        <Box marginTop={1}>
-          {busy && <Text color={theme.accent}>working… </Text>}
-          {status && <Text color={theme.ok}>{`✓ ${status}`}</Text>}
+      {(busy || results.length > 0) && !overlay && !skills && (
+        <Box flexDirection="column" marginTop={1}>
+          {busy && <Text color={theme.accent}>working…</Text>}
+          {!busy &&
+            results.map((r, i) => (
+              <Text key={i} color={r.trim().startsWith("→") ? theme.muted : theme.ok}>
+                {r.trim().startsWith("→") ? `  ${r.trim()}` : `✓ ${r}`}
+              </Text>
+            ))}
         </Box>
       )}
     </Box>

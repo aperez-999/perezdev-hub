@@ -272,9 +272,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       setBusy(false);
     }
     return guard(`build agent ${name} → ${targets.join(", ")}`, async () => {
-      await installDescribed(name, desc, targets, body);
+      const paths = await installDescribed(name, desc, targets, body);
       await refresh();
-      return `built agent ${name} (.md skill across ${targets.length} tool(s))${body ? " · AI-generated" : ""}`;
+      paths.forEach((p) => push("ok", `  → ${p}`));
+      return `built agent ${name} across ${targets.length} tool(s)${body ? " · AI-generated" : ""}`;
     });
   }
 
@@ -285,9 +286,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     const server = catalogMcp.find((m) => m.id === item.id);
     if (!server) return push("err", `no catalog entry for ${item.id}`);
     void guard(`install mcp ${server.id} → ${targets.join(", ")}`, async () => {
-      await installCatalogMcp(server, targets);
+      const paths = await installCatalogMcp(server, targets);
       await refresh();
-      return `installed mcp ${server.id}`;
+      paths.forEach((p) => push("ok", `  → ${p}`));
+      return `installed mcp ${server.id} into ${paths.length} config(s)`;
     });
   }
 
@@ -317,9 +319,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     const id = slugify(req);
     push("ok", `${id}: ${parsed.command} ${parsed.args.join(" ")}`);
     return guard(`inject mcp ${id} → ${targets.join(", ")}`, async () => {
-      await installCustomMcp(id, req, parsed, targets);
+      const paths = await installCustomMcp(id, req, parsed, targets);
       await refresh();
-      return `injected mcp ${id}`;
+      paths.forEach((p) => push("ok", `  → ${p}`));
+      return `injected mcp ${id} into ${paths.length} config(s)`;
     });
   }
 
@@ -355,9 +358,11 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     return guard(
       `inject ${servers.length} MCP server(s) → ${targets.join(", ")}`,
       async () => {
-        for (const s of servers) await installCatalogMcp(s, targets);
+        const paths = new Set<string>();
+        for (const s of servers) (await installCatalogMcp(s, targets)).forEach((p) => paths.add(p));
         await refresh();
-        return `injected ${sids.join(", ")}`;
+        paths.forEach((p) => push("ok", `  → ${p}`));
+        return `injected ${sids.join(", ")} into ${paths.size} config(s)`;
       },
       sids,
     );
@@ -444,16 +449,18 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       const prop = h.proposals.find((p) => p.name === arg);
       const sug = h.mcpSuggestions.find((m) => m.server.id === arg) ?? catalogMcp.find((m) => m.id === arg);
       if (prop) return guard(`install agent ${prop.name} → ${targets.join(", ")}`, async () => {
-        await installProposal(prop, targets);
+        const paths = await installProposal(prop, targets);
         await refresh();
-        return `installed agent ${prop.name}`;
+        paths.forEach((p) => push("ok", `  → ${p}`));
+        return `installed agent ${prop.name} across ${targets.length} tool(s)`;
       });
       if (sug) {
         const server = "server" in sug ? sug.server : sug;
         return guard(`install mcp ${server.id}`, async () => {
-          await installCatalogMcp(server, targets);
+          const paths = await installCatalogMcp(server, targets);
           await refresh();
-          return `installed mcp ${server.id}`;
+          paths.forEach((p) => push("ok", `  → ${p}`));
+          return `installed mcp ${server.id} into ${paths.length} config(s)`;
         });
       }
       return push("err", `unknown suggestion '${arg}' — run /recommend`);
@@ -463,9 +470,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       if (!m || !slugSchema.safeParse(m[1]).success) return push("err", "usage: /create <kebab-name>: <purpose>");
       const [, name, purpose] = m;
       return guard(`create agent ${name} → ${targets.join(", ")}`, async () => {
-        await installDescribed(name!, purpose!, targets);
+        const paths = await installDescribed(name!, purpose!, targets);
         await refresh();
-        return `created agent ${name}`;
+        paths.forEach((p) => push("ok", `  → ${p}`));
+        return `created agent ${name} across ${targets.length} tool(s)`;
       });
     }
     if (cmd === "build") {
@@ -478,9 +486,10 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
       const server = catalogMcp.find((m) => m.id === sub);
       if (server) {
         return guard(`install mcp ${server.id}`, async () => {
-          await installCatalogMcp(server, targets);
+          const paths = await installCatalogMcp(server, targets);
           await refresh();
-          return `installed mcp ${server.id}`;
+          paths.forEach((p) => push("ok", `  → ${p}`));
+          return `installed mcp ${server.id} into ${paths.length} config(s)`;
         });
       }
       return push("err", "usage: /mcp auto  |  /mcp <id>");
@@ -583,7 +592,9 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
 
   async function runPrompt(text: string): Promise<void> {
     if (!provider || provider.kind === "none") {
-      return push("err", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }));
+      push("err", "chat unavailable — no model is connected");
+      push("info", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }));
+      return;
     }
     const prompt = await resolveContext(text);
     const system = mode === "plan" ? THINKING_SYSTEM : undefined;
@@ -605,14 +616,14 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
     <Footer label={provider?.label ?? "no-model"} status={provider?.status ?? "..."} autonomy={autonomy} thinking={thinking} />
   );
   const hint = confirm
-    ? "Y approve   ·   N cancel"
+    ? "[Y] approve     [N] cancel"
     : overlay
-      ? "type, then Enter to submit   ·   Esc to cancel"
+      ? "[enter] submit     [esc] cancel"
       : page === 2
-        ? "Up/Down select   ·   Enter run   ·   F1-F3 switch page   ·   Esc to chat"
+        ? "[↑↓] select     [enter] run     [F1-F3] page     [esc] chat"
         : page === 3
-          ? "Tab switch focus   ·   Up/Down select   ·   Enter install/scan   ·   Esc to chat"
-          : "type a prompt or /command   ·   Shift+Tab plan   ·   Ctrl+A autonomy   ·   Ctrl+T thinking   ·   /help";
+          ? "[tab] focus     [↑↓] select     [enter] go     [F1-F3] page     [esc] chat"
+          : "[type] prompt / command     [shift+tab] plan     [ctrl+a] autonomy     [ctrl+t] thinking     [/help]";
   return (
     <Shell page={page} gradient={gradient} hint={hint} footer={footer} confirm={confirm ? <ConfirmBox desc={confirm.desc} /> : undefined}>
       {page === 1 && (
@@ -636,7 +647,7 @@ export function Console({ gradient }: { gradient: string }): React.ReactElement 
           setOverlayValue={(v) => setOverlay((o) => (o ? { ...o, value: v } : o))}
           onOverlaySubmit={onOverlaySubmit}
           skills={skills}
-          status={[...log].reverse().find((l) => l.kind === "ok")?.text ?? null}
+          results={log.filter((l) => l.kind === "ok").slice(-5).map((l) => l.text)}
           busy={busy}
         />
       )}

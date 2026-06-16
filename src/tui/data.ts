@@ -1,6 +1,6 @@
 import type { AgentSpec, ToolId } from "../core/agent-spec.js";
 import { TOOL_IDS } from "../core/agent-spec.js";
-import { detectAll } from "../adapters/registry.js";
+import { detectAll, getAdapter } from "../adapters/registry.js";
 import { listEntries, listMcpEntries, type McpEntry } from "../core/lockfile.js";
 import { installSpec } from "../core/install.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
@@ -79,7 +79,7 @@ export async function loadHome(): Promise<HomeData> {
 }
 
 /** Generate (LLM when a key exists, else template) and install an agent proposal. */
-export async function installProposal(proposal: AgentProposal, targets: ToolId[]): Promise<void> {
+export async function installProposal(proposal: AgentProposal, targets: ToolId[]): Promise<string[]> {
   const input: GenerateInput = {
     name: proposal.name,
     role: proposal.role,
@@ -90,7 +90,8 @@ export async function installProposal(proposal: AgentProposal, targets: ToolId[]
     targets,
   };
   const override = hasAnthropicKey() ? (await synthesizeInstructions(input)) ?? undefined : undefined;
-  await installSpec(generateSpec(input, override), new Date().toISOString());
+  const written = await installSpec(generateSpec(input, override), new Date().toISOString());
+  return written.map((f) => f.path);
 }
 
 const VOWEL = /^[aeiou]/i;
@@ -114,7 +115,7 @@ export async function installDescribed(
   purpose: string,
   targets: ToolId[],
   bodyOverride?: string,
-): Promise<void> {
+): Promise<string[]> {
   const role = `${VOWEL.test(purpose.trim()) ? "an" : "a"} ${purpose.trim()} specialist`;
   const input: GenerateInput = {
     name,
@@ -127,7 +128,13 @@ export async function installDescribed(
   };
   const override =
     bodyOverride?.trim() || (hasAnthropicKey() ? (await synthesizeInstructions(input)) ?? undefined : undefined);
-  await installSpec(generateSpec(input, override), new Date().toISOString());
+  const written = await installSpec(generateSpec(input, override), new Date().toISOString());
+  return written.map((f) => f.path);
+}
+
+/** Config-file paths an MCP install touched, for the given installed tools. */
+function mcpPaths(tools: ToolId[]): string[] {
+  return tools.map((t) => getAdapter(t).mcpConfigPath?.()).filter((p): p is string => Boolean(p));
 }
 
 /** Install a custom MCP server compiled on the fly (from an LLM intent prompt). */
@@ -136,7 +143,7 @@ export async function installCustomMcp(
   description: string,
   config: { command: string; args: string[]; env: Record<string, string> },
   targets: ToolId[],
-): Promise<void> {
+): Promise<string[]> {
   const server: RegistryMcpServer = {
     id,
     name: id,
@@ -146,11 +153,13 @@ export async function installCustomMcp(
     tags: ["custom"],
     env: config.env,
   };
-  await installMcpServer(server, targets, new Date().toISOString());
+  const res = await installMcpServer(server, targets, new Date().toISOString());
+  return mcpPaths(res.installedTo);
 }
 
-export async function installCatalogMcp(server: RegistryMcpServer, targets: ToolId[]): Promise<void> {
-  await installMcpServer(server, targets, new Date().toISOString());
+export async function installCatalogMcp(server: RegistryMcpServer, targets: ToolId[]): Promise<string[]> {
+  const res = await installMcpServer(server, targets, new Date().toISOString());
+  return mcpPaths(res.installedTo);
 }
 
 export { getMcpServer };
