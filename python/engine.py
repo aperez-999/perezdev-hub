@@ -92,6 +92,10 @@ def _hint(msg):
 
 def filetree(params):
     root = params.get("dir") or "."
+    if not os.path.exists(root):
+        raise ValueError("no such directory: %s" % root)
+    if not os.path.isdir(root):
+        raise ValueError("not a directory: %s" % root)
     max_depth = int(params.get("depth", 3))
     lines = [os.path.basename(os.path.abspath(root)) or root]
 

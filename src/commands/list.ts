@@ -4,14 +4,23 @@ import type { ManagedItem } from "../adapters/types.js";
 import { renderManagedTable } from "../ui/table.js";
 import { listMcpEntries } from "../core/lockfile.js";
 
+interface ListOptions {
+  json?: boolean;
+}
+
 /** List managed agents (across tools) and standalone MCP servers. */
-export async function runList(): Promise<void> {
+export async function runList(opts: ListOptions = {}): Promise<void> {
   const items: ManagedItem[] = [];
   for (const adapter of allAdapters()) {
     items.push(...(await adapter.list()));
   }
   items.sort((a, b) => a.name.localeCompare(b.name) || a.tool.localeCompare(b.tool));
   const mcp = await listMcpEntries();
+
+  if (opts.json) {
+    console.log(JSON.stringify({ agents: items, mcp }, null, 2));
+    return;
+  }
 
   const names = new Set(items.map((i) => i.name));
   console.log(
