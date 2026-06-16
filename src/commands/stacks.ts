@@ -1,5 +1,7 @@
 import pc from "picocolors";
-import { getStack } from "../registry/index.js";
+import { STACKS, getStack } from "../registry/index.js";
+
+const STACK_IDS = STACKS.map((s) => s.id);
 import { TOOL_IDS, type ToolId } from "../core/agent-spec.js";
 import { detectAll } from "../adapters/registry.js";
 import { installStack, planStack } from "../core/stack.js";
@@ -27,7 +29,7 @@ export async function runStackInstall(id: string, opts: StackOptions = {}): Prom
 
   const stack = getStack(id);
   if (!stack) {
-    p.cancel(`Unknown stack '${id}'. Run ${pc.cyan("perezdev stacks")} to list them.`);
+    p.cancel(`Unknown stack '${id}'. Known stacks: ${STACK_IDS.join(", ")}.`);
     process.exit(1);
   }
 

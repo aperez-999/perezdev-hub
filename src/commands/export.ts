@@ -8,12 +8,12 @@ export interface ExportOptions {
 
 /**
  * Export a managed agent's spec as JSON — to a file (`--out`) or stdout — so it
- * can be shared and re-installed elsewhere with `inspo import`.
+ * can be shared and re-installed elsewhere with `perezdev import`.
  */
 export async function runExport(name: string, opts: ExportOptions = {}): Promise<void> {
   const spec = await getAgentSpec(name);
   if (!spec) {
-    console.error(pc.red(`No managed agent named '${name}'. Run inspo list.`));
+    console.error(pc.red(`No managed agent named '${name}'. Run perezdev list.`));
     process.exit(1);
   }
   const json = JSON.stringify(spec, null, 2) + "\n";

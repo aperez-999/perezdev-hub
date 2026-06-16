@@ -5,6 +5,8 @@ import { engineRequest, Engine } from "../engine/bridge.js";
 import { scanProject } from "../core/scan.js";
 import { runCommand } from "../core/exec.js";
 import { promptActiveProvider } from "../core/provider-call.js";
+import { detectOllama } from "../core/ollama.js";
+import { resolveProvider, providerHint } from "../core/provider.js";
 import { runAutofix, inferVerifyCommand } from "../core/autofix.js";
 import type { Diagnosis } from "../tui/data.js";
 
@@ -45,6 +47,13 @@ export async function runAutofixCommand(file?: string, opts: AutofixOptions = {}
   console.log(`  verify: ${pc.cyan(verify)}\n`);
 
   const engine = new Engine();
+  // Fail fast if no model backend is reachable, instead of looping on errors.
+  const prov = resolveProvider(await detectOllama(engine));
+  if (prov.kind === "none") {
+    console.error(pc.red(providerHint(prov)));
+    engine.close();
+    process.exit(1);
+  }
   try {
     const result = await runAutofix(
       { diagnosis: d, verifyCommand: verify },

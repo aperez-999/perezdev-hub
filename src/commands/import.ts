@@ -12,7 +12,7 @@ const isTty = Boolean(process.stdout.isTTY);
 
 /** Install a shared agent spec from a JSON file produced by `inspo export`. */
 export async function runImport(file: string, opts: ImportOptions = {}): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(" inspo import ")));
+  p.intro(pc.bgCyan(pc.black(" perezdev import ")));
 
   const raw = await readIfExists(file);
   if (raw === null) {
