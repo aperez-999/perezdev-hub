@@ -15,6 +15,7 @@ import { runHome } from "./commands/home.js";
 import { runTui } from "./commands/tui.js";
 import { runFix } from "./commands/fix.js";
 import { runAutofixCommand } from "./commands/autofix.js";
+import { runProfileExport, runProfileImport, runProfileShow } from "./commands/profile.js";
 import { runMap } from "./commands/map.js";
 
 const program = new Command();
@@ -69,6 +70,7 @@ program
 
 program
   .command("list")
+  .option("--json", "output machine-readable JSON")
   .description("List managed agents and MCP servers across all tools")
   .action(wrap(runList));
 
@@ -115,6 +117,31 @@ program
   .argument("[file]", "log/traceback file (or pipe one into stdin)")
   .description("Diagnose a traceback: root file/line, cause, and the fix (Python engine)")
   .action(wrap(runFix));
+
+const profile = program
+  .command("profile")
+  .description("Share or replicate a whole setup (agents + MCP servers) via a JSON profile");
+
+profile
+  .command("export")
+  .option("-o, --out <file>", "output file ('-' for stdout)", "perezdev-profile.json")
+  .description("Bundle the current setup into a shareable profile JSON")
+  .action(wrap(runProfileExport));
+
+profile
+  .command("import")
+  .argument("<ref>", "profile file path or http(s) URL")
+  .option("-t, --target <ids>", "comma-separated tools (defaults to detected)")
+  .option("-y, --yes", "skip the confirmation prompt")
+  .option("--force", "overwrite agents/servers that already exist")
+  .description("Install every agent + MCP server from a profile")
+  .action(wrap(runProfileImport));
+
+profile
+  .command("show")
+  .argument("<ref>", "profile file path or http(s) URL")
+  .description("Preview a profile's agents and MCP servers without installing")
+  .action(wrap(runProfileShow));
 
 program
   .command("autofix")
