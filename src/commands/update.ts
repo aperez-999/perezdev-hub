@@ -1,17 +1,22 @@
 import pc from "picocolors";
 import { listEntries, getAgentSpec } from "../core/lockfile.js";
-import { installSpec, bumpPatch } from "../core/install.js";
+import { installSpec, planSpec, bumpPatch } from "../core/install.js";
 import type { AgentSpec } from "../core/agent-spec.js";
-import { p } from "../ui/prompts.js";
+import { p, renderDiff } from "../ui/prompts.js";
 
 export interface UpdateOptions {
   bump?: boolean;
+  dryRun?: boolean;
+}
+
+/** Apply the patch bump (if requested) to get the spec that would be written. */
+function nextSpec(spec: AgentSpec, bump: boolean): AgentSpec {
+  return bump ? { ...spec, version: bumpPatch(spec.version) } : spec;
 }
 
 /** Re-apply a stored spec to all targets, optionally bumping its patch version. */
 async function reapply(spec: AgentSpec, bump: boolean): Promise<number> {
-  const next = bump ? { ...spec, version: bumpPatch(spec.version) } : spec;
-  const written = await installSpec(next, new Date().toISOString());
+  const written = await installSpec(nextSpec(spec, bump), new Date().toISOString());
   return written.length;
 }
 
@@ -26,6 +31,11 @@ export async function runUpdate(name?: string, opts: UpdateOptions = {}): Promis
       p.cancel(`No managed agent named '${name}'. Run ${pc.cyan("perezdev list")}.`);
       process.exit(1);
     }
+    if (opts.dryRun) {
+      p.note(renderDiff(await planSpec(nextSpec(spec, bump))), `Would re-apply '${name}'`);
+      p.outro(pc.dim("dry run — nothing written."));
+      return;
+    }
     const n = await reapply(spec, bump);
     p.outro(`${pc.green("✓")} Re-applied '${name}' (${n} file(s))${bump ? ", version bumped" : ""}.`);
     return;
@@ -34,6 +44,13 @@ export async function runUpdate(name?: string, opts: UpdateOptions = {}): Promis
   const entries = await listEntries();
   if (entries.length === 0) {
     p.outro("Nothing to update — no managed agents recorded.");
+    return;
+  }
+  if (opts.dryRun) {
+    for (const e of entries) {
+      p.note(renderDiff(await planSpec(nextSpec(e.spec, bump))), `Would re-apply '${e.spec.name}'`);
+    }
+    p.outro(pc.dim(`dry run — ${entries.length} agent(s), nothing written.`));
     return;
   }
   let total = 0;

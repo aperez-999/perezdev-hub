@@ -6,11 +6,12 @@ import { p, guardCancel, renderDiff } from "../ui/prompts.js";
 
 export interface ImportOptions {
   yes?: boolean;
+  dryRun?: boolean;
 }
 
 const isTty = Boolean(process.stdout.isTTY);
 
-/** Install a shared agent spec from a JSON file produced by `inspo export`. */
+/** Install a shared agent spec from a JSON file produced by `perezdev export`. */
 export async function runImport(file: string, opts: ImportOptions = {}): Promise<void> {
   p.intro(pc.bgCyan(pc.black(" perezdev import ")));
 
@@ -34,6 +35,12 @@ export async function runImport(file: string, opts: ImportOptions = {}): Promise
     process.exit(1);
   }
   const spec = result.data;
+
+  if (opts.dryRun) {
+    p.note(renderDiff(await planSpec(spec)), "Files to write");
+    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to import '${spec.name}'.`));
+    return;
+  }
 
   const auto = opts.yes === true || !isTty;
   if (!auto) {
