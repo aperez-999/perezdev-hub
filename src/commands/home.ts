@@ -32,6 +32,28 @@ async function targets(): Promise<ToolId[]> {
 
 /** Clean, breathable guided home — the default `perezdev` experience. */
 export async function runHome(): Promise<void> {
+  // The menu is interactive (clack) and needs a real terminal; degrade gracefully
+  // when piped/redirected instead of crashing on TTY initialization.
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    console.log(
+      pc.cyan(pc.bold("PerezDev Hub")) +
+        pc.dim(" — interactive menu needs a terminal.\n") +
+        "  Run " +
+        pc.cyan("perezdev") +
+        " in a terminal, or use a direct command: " +
+        pc.cyan("create") +
+        ", " +
+        pc.cyan("list") +
+        ", " +
+        pc.cyan("profile") +
+        ", " +
+        pc.cyan("doctor") +
+        " (see " +
+        pc.cyan("perezdev --help") +
+        ").",
+    );
+    return;
+  }
   p.intro(pc.cyan(pc.bold("PerezDev Hub")));
 
   const spin = p.spinner();
