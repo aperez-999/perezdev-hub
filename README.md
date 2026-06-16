@@ -108,8 +108,11 @@ The TUI is optional — every capability is scriptable:
 | `perezdev menu` | Plain list menu (no fullscreen) |
 | `perezdev create` | Generate a custom agent and install it (`-n/-p/-r/-t/-y`, `--preset`, `-a`) |
 | `perezdev stack <id>` | Install a bundled set of agents + MCP servers |
+| `perezdev profile export` | Bundle your whole setup into a shareable JSON profile (`-o <file>`) |
+| `perezdev profile import <file\|url>` | Replicate a setup from a file or URL (`-t`, `-y`, `--force`) |
+| `perezdev profile show <file\|url>` | Preview a profile's agents + MCP servers |
 | `perezdev manage` | Pick an agent/MCP → show / update / export / remove |
-| `perezdev list` | List managed agents and MCP servers across tools |
+| `perezdev list` | List managed agents and MCP servers across tools (`--json`) |
 | `perezdev show <name>` | Inspect an agent's spec, files, and instructions |
 | `perezdev update [name]` | Re-apply one or all agents (repairs drift); `--bump` bumps version |
 | `perezdev remove <name>` | Remove a managed agent and restore backups |
@@ -154,6 +157,15 @@ If `python3` or Ollama is missing, the affected feature reports a readable messa
 ## Auto-fix loop
 
 `perezdev autofix <file>` (or `/autofix` in the TUI) closes the loop on a failing program: it diagnoses the traceback, then asks the active model for one action at a time — a surgical search/replace **patch**, a dependency **install**, or a **verify** re-run — applies it under the same backup/rollback safeguards, re-runs the verify command, and repeats until the error clears or a 3-attempt cap is hit. Every mutating step is gated by the `[Y] Approve / [N] Cancel` dialog (auto-approved only in Autonomous mode), and a denylist refuses destructive commands (`rm -rf`, `sudo`, `curl | sh`, force-push, …) even then. The verify command is inferred from the error and your stack; override it with `--verify '<cmd>'` (CLI) or `/autofix <file> | <cmd>` (TUI).
+
+## Shareable profiles
+
+Replicate a whole setup in one command — no server, no accounts. `perezdev profile export` bundles your managed agents and MCP servers into a single `perezdev-profile.json`; share it as a file, gist, or in a repo. Anyone runs `perezdev profile import <file|url>` to install the lot across their own detected tools (`perezdev profile show <file|url>` previews first). Already-installed items are skipped unless you pass `--force`, and a failed item never blocks the rest.
+
+```bash
+perezdev profile export -o team-setup.json
+perezdev profile import https://gist.githubusercontent.com/.../team-setup.json
+```
 
 ## Safety
 
