@@ -53,6 +53,7 @@ program
   .option("--preset <id>", "install a built-in starter agent by id")
   .option("-a, --advanced", "prompt for behaviors / tools / MCP")
   .option("-y, --yes", "skip the confirmation prompt")
+  .option("--dry-run", "preview the files that would be written, without installing")
   .action(wrap(runCreate));
 
 program
@@ -60,6 +61,7 @@ program
   .argument("<id>", "stack to install")
   .option("-t, --target <ids>", "comma-separated tools: claude-code,cursor,copilot,codex")
   .option("-y, --yes", "skip the confirmation prompt")
+  .option("--dry-run", "preview the files that would be written, without installing")
   .description("Install a bundle of agents + MCP servers in one command")
   .action(wrap(runStackInstall));
 
@@ -76,14 +78,16 @@ program
 
 program
   .command("show")
-  .argument("<name>", "agent to inspect")
-  .description("Show an agent's spec, files, and instructions")
+  .argument("<name>", "agent or MCP server to inspect")
+  .option("--json", "output machine-readable JSON")
+  .description("Show an agent's spec, files, and instructions (or an MCP server)")
   .action(wrap(runShow));
 
 program
   .command("update")
   .argument("[name]", "agent to update (omit to update all)")
   .option("-b, --bump", "bump the patch version")
+  .option("--dry-run", "preview the files that would be written, without installing")
   .description("Re-apply a managed agent's files to its tools (repairs drift)")
   .action(wrap(runUpdate));
 
@@ -104,11 +108,14 @@ program
   .command("import")
   .argument("<file>", "agent spec JSON to install")
   .option("-y, --yes", "skip the confirmation prompt")
+  .option("--dry-run", "preview the files that would be written, without installing")
   .description("Install a shared agent spec from a JSON file")
   .action(wrap(runImport));
 
 program
   .command("doctor")
+  .option("--fix", "re-apply the lockfile to repair anything missing")
+  .option("--json", "output machine-readable JSON")
   .description("Diagnose config drift and broken installs")
   .action(wrap(runDoctor));
 
@@ -134,12 +141,14 @@ profile
   .option("-t, --target <ids>", "comma-separated tools (defaults to detected)")
   .option("-y, --yes", "skip the confirmation prompt")
   .option("--force", "overwrite agents/servers that already exist")
+  .option("--dry-run", "preview the files that would be written, without installing")
   .description("Install every agent + MCP server from a profile")
   .action(wrap(runProfileImport));
 
 profile
   .command("show")
   .argument("<ref>", "profile file path or http(s) URL")
+  .option("--json", "output machine-readable JSON")
   .description("Preview a profile's agents and MCP servers without installing")
   .action(wrap(runProfileShow));
 
