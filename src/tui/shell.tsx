@@ -7,12 +7,13 @@ import { StatusBar, type StatusProps } from "./statusbar.js";
 import type { HomeData } from "./data.js";
 import { version as VERSION } from "./version.js";
 
-export type Page = 1 | 2 | 3;
+export type Page = 1 | 2 | 3 | 4;
 
 const TABS: { page: Page; key: string; label: string }[] = [
-  { page: 1, key: "F1", label: "Chat Engine" },
-  { page: 2, key: "F2", label: "Skill Builder" },
-  { page: 3, key: "F3", label: "MCP Manager" },
+  { page: 1, key: "1", label: "Chat" },
+  { page: 2, key: "2", label: "Skills" },
+  { page: 3, key: "3", label: "MCP" },
+  { page: 4, key: "4", label: "Start" },
 ];
 
 /** Three-zone shell: header (logo · tabs · model) / body (rail + page) / status bar. */
@@ -62,6 +63,9 @@ export function Shell({
               </Box>
             );
           })}
+          <Box marginLeft={2}>
+            <Text color={theme.dim}>{"⇄ Ctrl ←/→"}</Text>
+          </Box>
         </Box>
         <Box flexGrow={0}>
           <Text color={online ? theme.ok : theme.muted}>● </Text>

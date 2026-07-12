@@ -165,6 +165,9 @@ export function FactoryPage({
           )}
         </Box>
       </Box>
+      <Box paddingX={0} marginTop={1}>
+        <Text color={theme.dim}>Tab move field · Space toggle tool · ←/→ adjust · Enter generate & install</Text>
+      </Box>
     </Box>
   );
 }

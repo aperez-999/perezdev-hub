@@ -32,6 +32,9 @@ afterEach(async () => {
 const ESC = String.fromCharCode(27);
 const F2 = ESC + "OQ";
 const F3 = ESC + "OR";
+const F4 = ESC + "OS";
+const CTRL_RIGHT = ESC + "[1;5C";
+const CTRL_LEFT = ESC + "[1;5D";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until(fn: () => boolean, timeout = 4000): Promise<void> {
   const start = Date.now();
@@ -188,8 +191,45 @@ describe("Console TUI", () => {
     stdin.write(ESC);
     await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
-});
 
+  it("renders four page tabs with the Ctrl+←/→ nav hint", async () => {
+    const { lastFrame } = render(<App />);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    const f = lastFrame() ?? "";
+    expect(f).toMatch(/1 Chat/);
+    expect(f).toMatch(/2 Skills/);
+    expect(f).toMatch(/3 MCP/);
+    expect(f).toMatch(/4 Start/);
+    expect(f).toMatch(/Ctrl/);
+  });
+
+  it("Ctrl+← from Chat wraps to the Quick Start page", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(CTRL_LEFT); // page 1 → wrap to page 4
+    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
+    const f = lastFrame() ?? "";
+    expect(f).toMatch(/THE THREE ENGINES/);
+    expect(f).toMatch(/NAVIGATION/);
+    expect(f).toMatch(/YOUR SETUP/);
+  }, 15000);
+
+  it("F4 and Ctrl+→ reach the Quick Start page; digit 4 works when not typing", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(F4); // legacy function-key alias
+    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
+    stdin.write(CTRL_RIGHT); // page 4 → wrap to page 1
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
+    stdin.write(F3); // hop to a non-typing page so digit nav applies
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await wait(150);
+    stdin.write("4"); // digit jump
+    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
+  }, 15000);
+});
 async function typeLine(stdin: { write: (s: string) => void }, s: string): Promise<void> {
   for (const ch of s) {
     stdin.write(ch);
