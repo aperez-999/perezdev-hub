@@ -32,13 +32,20 @@ The agent-skills ecosystem is fragmented: Claude Code `SKILL.md`, Cursor `.mdc` 
 
 ## Install
 
+Requires **Node ≥ 20**.
+
 ```bash
 npm install -g perezdev-hub
-# or run without installing
+perezdev
+```
+
+Or run once without installing:
+
+```bash
 npx perezdev-hub
 ```
 
-Requires **Node ≥ 20**. For local model prompting, install [Ollama](https://ollama.com) and pull a model (see [Local engine](#local-engine)).
+For local model prompting, install [Ollama](https://ollama.com) and pull a model (see [Local engine](#local-engine)).
 
 ## Quick start
 

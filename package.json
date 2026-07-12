@@ -4,8 +4,8 @@
   "description": "PerezDev Hub — your AI dev workflow hub: generate custom agents, install curated stacks, and manage skills/MCP servers across Claude Code, Cursor, Copilot, Codex.",
   "type": "module",
   "bin": {
-    "perezdev": "./dist/index.js",
-    "pdh": "./dist/index.js"
+    "perezdev": "dist/index.js",
+    "pdh": "dist/index.js"
   },
   "files": [
     "dist",
