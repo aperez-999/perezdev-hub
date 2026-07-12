@@ -1,6 +1,6 @@
 {
   "name": "perezdev-hub",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PerezDev Hub — your AI dev workflow hub: generate custom agents, install curated stacks, and manage skills/MCP servers across Claude Code, Cursor, Copilot, Codex.",
   "type": "module",
   "bin": {
