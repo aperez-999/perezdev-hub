@@ -59,11 +59,10 @@ export function ChatPage({
 
       {!online && (
         <Box borderStyle="round" borderColor={theme.warn} paddingX={1} marginX={2} marginTop={1}>
-          <Text color={theme.warn}>⚠ No model. Run </Text>
-          <Text color={theme.warn} bold>
-            ollama pull qwen2.5-coder
+          <Text color={theme.warn} wrap="wrap">
+            ⚠ No model yet. Run <Text bold>ollama pull qwen2.5-coder</Text> or set
+            ANTHROPIC_API_KEY / OPENAI_API_KEY for cloud.
           </Text>
-          <Text color={theme.warn}> or set ANTHROPIC_API_KEY.</Text>
         </Box>
       )}
 
@@ -78,6 +77,9 @@ export function ChatPage({
           focus={inputActive}
           placeholder="type a prompt or /command…"
         />
+      </Box>
+      <Box paddingX={2}>
+        <Text color={theme.dim}>Enter send · / commands · @file context · Shift+Tab plan · Ctrl+M model</Text>
       </Box>
     </Box>
   );
