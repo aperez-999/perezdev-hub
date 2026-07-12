@@ -6,8 +6,8 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  ◤ PEREZDEV HUB   [1] Chat  [2] Skills  [3] MCP  [4] Start     │
-│  ────────────────────────────────────────  ⇄ Ctrl ←/→ ───────│
+│  ◤ PEREZDEV HUB      [1] Chat   [2] Skills   [3] MCP          │
+│  ───────────────────────────────────────  ⇄ Shift ←/→ ───────│
 │  [IDEs] ● cursor  ○ copilot  ○ cline  ○ windsurf  ○ roo        │
 │  [CLIs] ● claude-code  ○ codex  ○ aider  ● ollama (local)      │
 │  project: git · node · typescript · react · vitest            │
@@ -17,7 +17,8 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 ```
 
 Launching `perezdev` plays a short animated intro (logo + boot checklist + a
-quick-start card), then drops you into the hub. Press any key to skip it.
+quick-start card). It **waits on the quick-start card** — read it, then press
+`↵ Enter` to enter the hub (any key works).
 
 Command: `perezdev` (aliases `pdh`, `inspo`).
 
@@ -50,14 +51,13 @@ perezdev
 
 This opens the fullscreen TUI. The header badges are **live** — they reflect the AI tools actually configured on your machine and the stack of the current project. You drive everything by typing; there's no menu to arrow through.
 
-Four pages, switched with **`Ctrl+←` / `Ctrl+→`** (or the digits `1`–`4` off the chat page; the legacy `F1`–`F4` keys still work). `Esc` returns to chat:
+Three pages, switched with **`Shift+←` / `Shift+→`** (or the digits `1`–`3` off the chat page; the legacy `F1`–`F3` keys still work). `Esc` returns to chat:
 
 | Page | What it does |
 | --- | --- |
 | **`1` 🤖 Chat Engine** | Prompt your local/cloud model; ecosystem map + log stream. |
 | **`2` ⚙ Skill Builder** | *Create Custom Agent* (goal → LLM-generated skill), *Run Workspace Diagnoser*, *View Project Skills*. |
 | **`3` 🔌 MCP Manager** | Industry MCP directory with live status, a discovery scanner, and a custom integration prompt that compiles `mcpServers` JSON. |
-| **`4` 🚀 Quick Start** | Onboarding overview — what each engine does, the key map, commands to try, and your live setup. Reachable any time. |
 
 In **Manual** autonomy any action that writes files pops an inline `[Y] Approve / [N] Cancel` dialog on the current page. Toggle to **Autonomous** to skip it.
 
@@ -65,8 +65,8 @@ In **Manual** autonomy any action that writes files pops an inline `[Y] Approve 
 
 | Key | Action |
 | --- | --- |
-| `Ctrl+←` / `Ctrl+→` | Previous / next page (wraps) |
-| `1` / `2` / `3` / `4` | Jump to a page (digits work off the chat page; `F1`–`F4` still work) |
+| `Shift+←` / `Shift+→` | Previous / next page (wraps) |
+| `1` / `2` / `3` | Jump to a page (digits work off the chat page; `F1`–`F3` still work) |
 | `Shift+Tab` | Normal ↔ Planning mode (routes to a reasoning model) |
 | `Ctrl+A` | Manual ↔ Autonomous |
 | `Ctrl+T` | Thinking depth (low / medium / high) |

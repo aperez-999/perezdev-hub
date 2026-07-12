@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { render } from "ink-testing-library";
 import { App } from "../src/tui/app.js";
+import { Intro } from "../src/tui/intro.js";
 
 let home: string;
 let cwd: string;
@@ -32,9 +33,8 @@ afterEach(async () => {
 const ESC = String.fromCharCode(27);
 const F2 = ESC + "OQ";
 const F3 = ESC + "OR";
-const F4 = ESC + "OS";
-const CTRL_RIGHT = ESC + "[1;5C";
-const CTRL_LEFT = ESC + "[1;5D";
+const SHIFT_RIGHT = ESC + "[1;2C";
+const SHIFT_LEFT = ESC + "[1;2D";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until(fn: () => boolean, timeout = 4000): Promise<void> {
   const start = Date.now();
@@ -192,44 +192,55 @@ describe("Console TUI", () => {
     await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("renders four page tabs with the Ctrl+←/→ nav hint", async () => {
+  it("renders three page tabs with the Shift+←/→ nav hint", async () => {
     const { lastFrame } = render(<App />);
     await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
     expect(f).toMatch(/1 Chat/);
     expect(f).toMatch(/2 Skills/);
     expect(f).toMatch(/3 MCP/);
-    expect(f).toMatch(/4 Start/);
-    expect(f).toMatch(/Ctrl/);
+    expect(f).toMatch(/Shift/);
   });
 
-  it("Ctrl+← from Chat wraps to the Quick Start page", async () => {
+  it("Shift+←/→ cycles pages and wraps at the ends", async () => {
     const { lastFrame, stdin } = render(<App />);
     await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write(CTRL_LEFT); // page 1 → wrap to page 4
-    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
-    const f = lastFrame() ?? "";
-    expect(f).toMatch(/THE THREE ENGINES/);
-    expect(f).toMatch(/NAVIGATION/);
-    expect(f).toMatch(/YOUR SETUP/);
+    stdin.write(SHIFT_LEFT); // page 1 → wrap to page 3
+    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    stdin.write(SHIFT_RIGHT); // page 3 → wrap to page 1
+    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
+    stdin.write(SHIFT_RIGHT); // page 1 → page 2
+    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("F4 and Ctrl+→ reach the Quick Start page; digit 4 works when not typing", async () => {
+  it("digit keys 1-3 jump pages when not typing", async () => {
     const { lastFrame, stdin } = render(<App />);
     await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write(F4); // legacy function-key alias
-    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
-    stdin.write(CTRL_RIGHT); // page 4 → wrap to page 1
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
-    stdin.write(F3); // hop to a non-typing page so digit nav applies
+    stdin.write(F3); // leave the chat input so single-key nav applies
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     await wait(150);
-    stdin.write("4"); // digit jump
-    await until(() => /QUICK START/.test(lastFrame() ?? ""), 4000);
+    stdin.write("2");
+    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 });
+
+describe("Intro splash", () => {
+  it("holds on the quick-start card until a key is pressed", async () => {
+    let done = 0;
+    const { lastFrame, stdin } = render(<Intro onDone={() => (done += 1)} />);
+    // Wait past the boot animation; the card must appear and then stay put.
+    await until(() => /QUICK START/.test(lastFrame() ?? ""), 6000);
+    expect(lastFrame()).toMatch(/press . to enter the hub/);
+    await wait(700); // it must NOT auto-advance
+    expect(done).toBe(0);
+    expect(lastFrame()).toMatch(/QUICK START/);
+    stdin.write("\r"); // Enter enters the hub
+    await until(() => done === 1, 2000);
+  }, 12000);
+});
+
 async function typeLine(stdin: { write: (s: string) => void }, s: string): Promise<void> {
   for (const ch of s) {
     stdin.write(ch);
