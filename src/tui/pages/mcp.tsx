@@ -176,6 +176,9 @@ export function McpPage({
           </Box>
         )}
       </Box>
+      <Box marginTop={1}>
+        <Text color={theme.dim}>↑/↓ select · Enter install · Tab move focus · s run scanner</Text>
+      </Box>
     </Box>
   );
 }

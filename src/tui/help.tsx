@@ -5,8 +5,9 @@ import { SectionHeader } from "./components.js";
 import { COMMANDS } from "./commands.js";
 
 const KEYS: [string, string][] = [
-  ["F1 / F2 / F3", "Chat · Skill Builder · MCP Manager"],
-  ["1 / 2 / 3", "Switch page (when not typing)"],
+  ["Ctrl+← / Ctrl+→", "Previous / next page"],
+  ["1 / 2 / 3 / 4", "Chat · Skills · MCP · Quick Start (when not typing)"],
+  ["F1 – F4", "Same pages (legacy function keys)"],
   ["Shift+Tab", "Toggle Normal / Planning mode"],
   ["Ctrl+A", "Cycle autonomy (manual / auto)"],
   ["Ctrl+T", "Cycle thinking (low / med / high)"],
