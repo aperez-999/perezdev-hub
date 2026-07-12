@@ -16,23 +16,22 @@ const BOOT = [
 
 const LOGO = "PEREZDEV HUB";
 
-// Frame timeline (each frame ≈ FRAME_MS). Derived phases keep a single timer.
+// Frame timeline (each frame ≈ FRAME_MS). The animation plays through the logo
+// and boot checklist, then HOLDS on the quick-start card until the user presses
+// a key — it never auto-advances into the hub.
 const FRAME_MS = 80;
 const LOGO_END = 9; // typewriter reveal of the logo
-const BOOT_PER = 4; // frames spent on each boot line
+const BOOT_PER = 5; // frames spent on each boot line
 const BOOT_END = LOGO_END + BOOT.length * BOOT_PER;
-const QUICK_HOLD = 22; // frames the quick-start card lingers before entering
-const DONE = BOOT_END + QUICK_HOLD;
 
 const TABS: { key: string; label: string; blurb: string }[] = [
-  { key: "1", label: "Chat Engine", blurb: "talk to local/cloud models · /commands · @files" },
+  { key: "1", label: "Chat Engine", blurb: "chat local/cloud models · /commands · @files" },
   { key: "2", label: "Skill Builder", blurb: "generate custom agents for your tools" },
   { key: "3", label: "MCP Manager", blurb: "install & manage MCP servers" },
-  { key: "4", label: "Quick Start", blurb: "this guide — reachable any time" },
 ];
 
-/** Animated intro: logo build-up → boot checklist → quick-start card.
- *  Auto-advances on a timer; any key skips straight into the hub. */
+/** Animated intro: logo build-up → boot checklist → a quick-start card that
+ *  waits for the user. Press ↵ (or any key) to enter the hub — no auto-skip. */
 export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
   const { stdout } = useStdout();
   const cols = stdout?.columns ? Math.min(stdout.columns, 132) : 80;
@@ -45,19 +44,29 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
     onDone();
   };
 
+  // Advance the animation until the boot checklist is done, then stop — the card
+  // stays put and waits for a keypress.
   useEffect(() => {
-    const id = setInterval(() => setFrame((f) => f + 1), FRAME_MS);
+    const id = setInterval(() => {
+      setFrame((f) => (f >= BOOT_END ? f : f + 1));
+    }, FRAME_MS);
     return () => clearInterval(id);
   }, []);
 
+  const booted = frame >= BOOT_END;
+
+  // Once booted, a slow timer blinks the "press ↵" hint so it reads as live.
+  const [blink, setBlink] = useState(true);
   useEffect(() => {
-    if (frame >= DONE) finish();
-  }, [frame]);
+    if (!booted) return;
+    const id = setInterval(() => setBlink((b) => !b), 500);
+    return () => clearInterval(id);
+  }, [booted]);
 
   useInput(() => finish());
 
-  const phase: "logo" | "boot" | "quick" =
-    frame < LOGO_END ? "logo" : frame < BOOT_END ? "boot" : "quick";
+  const phase: "logo" | "boot" | "ready" =
+    frame < LOGO_END ? "logo" : !booted ? "boot" : "ready";
 
   const typed =
     phase === "logo" ? Math.max(1, Math.ceil((LOGO.length * (frame + 1)) / LOGO_END)) : LOGO.length;
@@ -67,7 +76,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
   const bootStep =
     phase === "logo" ? -1 : Math.min(BOOT.length, Math.floor((frame - LOGO_END) / BOOT_PER));
 
-  const pct = Math.min(1, frame / DONE);
+  const pct = Math.min(1, frame / BOOT_END);
   const barW = 34;
   const filled = Math.round(barW * pct);
   const bar = "█".repeat(filled) + "░".repeat(barW - filled);
@@ -79,7 +88,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
         flexDirection="column"
         alignItems="center"
         borderStyle="round"
-        borderColor={theme.line}
+        borderColor={booted ? theme.accent : theme.line}
         paddingX={3}
         paddingY={1}
       >
@@ -119,8 +128,8 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
         })}
       </Box>
 
-      {/* ── quick-start card (revealed after boot) ── */}
-      {phase === "quick" && (
+      {/* ── quick-start card (revealed once boot completes) ── */}
+      {booted && (
         <Box
           flexDirection="column"
           marginTop={1}
@@ -128,7 +137,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
           borderColor={theme.accent}
           paddingX={2}
           paddingY={0}
-          width={60}
+          width={62}
         >
           <Text>
             <Text color={theme.accent}>{"▌ "}</Text>
@@ -139,7 +148,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
           <Box flexDirection="column" marginTop={1}>
             {TABS.map((t) => (
               <Box key={t.key}>
-                <Box width={4} flexShrink={0}>
+                <Box width={3} flexShrink={0}>
                   <Text color={theme.violet} bold>
                     {t.key}
                   </Text>
@@ -152,19 +161,23 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
             ))}
           </Box>
           <Box marginTop={1}>
-            <Text color={theme.dim}>Ctrl ←/→ or 1-4 switch pages · Shift+Tab plan · ? help</Text>
+            <Text color={theme.dim}>Shift ←/→ or 1-3 switch pages · Shift+Tab plan · ? help</Text>
           </Box>
         </Box>
       )}
 
-      {/* ── progress bar + hint ── */}
+      {/* ── progress bar + enter hint ── */}
       <Box marginTop={1} flexDirection="column" alignItems="center">
         <Gradient colors={LOGO_GRADIENT}>
           <Text>{bar}</Text>
         </Gradient>
-        <Text color={theme.dim}>
-          {phase === "quick" ? "press ↵ to enter the hub" : "booting…"}
-        </Text>
+        {booted ? (
+          <Text color={blink ? theme.accent : theme.dim} bold>
+            press ↵ to enter the hub
+          </Text>
+        ) : (
+          <Text color={theme.dim}>booting…</Text>
+        )}
       </Box>
     </Box>
   );

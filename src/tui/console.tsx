@@ -43,26 +43,25 @@ import { helpLines, filterCommands } from "./commands.js";
 import { ChatPage } from "./pages/chat.js";
 import { FactoryPage, GEN_PRESETS, type FactoryFocus, type GenPreset, type ToolChip } from "./pages/factory.js";
 import { McpPage, MCP_DIRECTORY, type McpFocus, type McpPanel } from "./pages/mcp.js";
-import { QuickStartPage } from "./pages/quickstart.js";
 
 /** Nav escape sequences Ink's useInput swallows; parsed off raw stdin so they
- *  work even while a TextInput is focused. Function keys (F1–F4) still work as
- *  legacy aliases, but the friendly, Mac-safe binding is Ctrl+←/→ to cycle. */
+ *  work even while a TextInput is focused. Shift+←/→ cycles pages — it's the
+ *  Mac-safe binding: plain arrows collide with the text cursor, and Ctrl+arrows
+ *  trigger macOS Mission Control (desktop swiping). F1–F3 stay as legacy aliases. */
 type NavIntent = { page: Page } | { cycle: -1 | 1 };
 function navFromData(data: string): NavIntent | null {
   const d = data.startsWith("\x1b") ? data.slice(1) : data;
-  // Function keys F1–F4 (SS3 / CSI / linux-console forms) jump to a page.
+  // Function keys F1–F3 (SS3 / CSI / linux-console forms) jump to a page.
   if (d === "OP" || d === "[11~" || d === "[[A") return { page: 1 };
   if (d === "OQ" || d === "[12~" || d === "[[B") return { page: 2 };
   if (d === "OR" || d === "[13~" || d === "[[C") return { page: 3 };
-  if (d === "OS" || d === "[14~" || d === "[[D") return { page: 4 };
-  // Ctrl+Arrow cycles pages — ergonomic on laptops with no dedicated F-row.
-  if (d === "[1;5C") return { cycle: 1 };
-  if (d === "[1;5D") return { cycle: -1 };
+  // Shift+Arrow cycles pages — safe on laptops (no Mission Control swipe).
+  if (d === "[1;2C") return { cycle: 1 };
+  if (d === "[1;2D") return { cycle: -1 };
   return null;
 }
 
-const PAGE_COUNT = 4;
+const PAGE_COUNT = 3;
 
 /** The whole UI: tabbed console (Chat · Skill Builder · MCP). */
 export function Console(): React.ReactElement {
@@ -123,7 +122,7 @@ export function Console(): React.ReactElement {
       if (s.available && s.normal) push("ok", `Detected models: ${s.normal} (Normal), ${s.thinking ?? s.normal} (Think)`);
       else if (p.kind === "cloud") push("ok", `No local models — using cloud: ${p.label}`);
       else push("info", providerHint(p));
-      push("info", "Type a prompt, or /help for commands.  Ctrl+←/→ or 1-4 switch pages · 4 = Quick Start.");
+      push("info", "Type a prompt, or /help for commands.  Shift+←/→ or 1-3 switch pages.");
     });
     return () => engineRef.current?.close();
   }, []);
@@ -144,8 +143,7 @@ export function Console(): React.ReactElement {
     if (!rcLoaded.current) return;
     void saveRc({
       ...prefsRef.current,
-      // Quick Start (page 4) is transient onboarding — never restore into it.
-      last_active_tab: (page === 4 ? 1 : page) as 1 | 2 | 3,
+      last_active_tab: page,
       autonomy_mode: autonomy,
       mcp_ignored_servers: ignored,
     }).catch(() => {});
@@ -237,8 +235,8 @@ export function Console(): React.ReactElement {
     }
 
     if (!typing && ch === "?") return setHelp(true);
-    // Digit nav works on any non-typing page (Chat is always typing → use Ctrl+←/→).
-    if (!typing && ch >= "1" && ch <= "4") return goto(Number(ch) as Page);
+    // Digit nav works on any non-typing page (Chat is always typing → use Shift+←/→).
+    if (!typing && ch >= "1" && ch <= "3") return goto(Number(ch) as Page);
 
     // ── Page 1 (chat) ──
     if (page === 1) {
@@ -885,9 +883,6 @@ export function Console(): React.ReactElement {
             />
           )}
           {confirm && <ConfirmBox desc={confirm.desc} diff={confirm.diff} />}
-          {page === 4 && (
-            <QuickStartPage home={home} online={online} model={footer.model} routing={routing} />
-          )}
         </>
       )}
     </Shell>
