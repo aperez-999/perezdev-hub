@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-25T18:54:00.000Z",
+  "title": "Design System: PerezDev Hub",
+  "extensions": {
+    "colorMeta": {
+      "cyan": { "role": "primary", "displayName": "Signal Cyan", "canonical": "#34d8e6" },
+      "violet": { "role": "secondary", "displayName": "Planning Violet", "canonical": "#b89dff" },
+      "fg": { "role": "neutral", "displayName": "Body", "canonical": "#cdd6e0" }
+    },
+    "motion": [
+      { "name": "state-only", "value": "spinner while busy; no page-load choreography", "purpose": "Product motion: feedback, not intro theater." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "<116 cols", "purpose": "Stack Skills/MCP panes vertically." },
+      { "name": "hub", "value": "80–132 cols", "purpose": "Shell max width 132." }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "The Workbench",
+    "overview": "A bench, not a cockpit. One surface for running a model, building skills, and connecting tools. Restrained cyan/violet; say each fact once.",
+    "keyCharacteristics": [
+      "Character-cell Ink layout",
+      "One identity, one model, one prompt",
+      "Motion is state only",
+      "Logo gradient is intro-only"
+    ],
+    "rules": [
+      { "name": "The Ten-Percent Rule", "body": "Cyan and violet together occupy ≤10% of the frame.", "section": "colors" },
+      { "name": "The One-Home Rule", "body": "Model string in header or status bar, never both.", "section": "colors" },
+      { "name": "The No-Eyebrow Rule", "body": "Do not prefix every region with uppercase labels when tabs already name the page.", "section": "typography" },
+      { "name": "The Flat-Hub Rule", "body": "Header, main, prompt. No nested cards around the transcript.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do put the conversation in the largest rectangle after header + prompt.",
+      "Do show only tools that are present.",
+      "Do keep Manual confirm for writes."
+    ],
+    "donts": [
+      "Don't list every unsupported tool as an empty circle.",
+      "Don't run a fake NASA boot sequence.",
+      "Don't repeat brand, model, or nav hints on three surfaces.",
+      "Don't use emoji in tabs or headers.",
+      "Don't advertise 1/2/3 as page keys on Chat."
+    ]
+  }
+}
