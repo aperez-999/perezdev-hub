@@ -46,6 +46,8 @@ Implemented and verified (121 tests green, prod `npm audit` = 0, e2e smoke passe
 
 Goal: less clustered, animated where it helps, no template feel, no drift.
 
+**Follow** [`docs/tui-design-spec.md`](docs/tui-design-spec.md) (plus `PRODUCT.md` / `DESIGN.md`). Implement slices A→G in that spec; do not invent a fourth page.
+
 - [~] **Split `console.tsx`.** Partial: extracted the `commands` registry
       (`src/tui/commands.ts`, one map: name → {usage, help}) and split the view into
       `shell`/`rail`/`statusbar`/`slash`/`help` + the three pages. The `useHubActions`
