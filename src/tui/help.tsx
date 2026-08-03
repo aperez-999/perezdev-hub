@@ -1,29 +1,30 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "./theme.js";
-import { SectionHeader } from "./components.js";
 import { COMMANDS } from "./commands.js";
 
 const KEYS: [string, string][] = [
-  ["Shift+← / Shift+→", "Previous / next page (always)"],
-  ["F1 / F2 / F3", "Same pages (legacy)"],
-  ["Shift+Tab", "Toggle Normal / Planning mode"],
-  ["Ctrl+A", "Cycle autonomy (manual / auto)"],
-  ["Ctrl+T", "Cycle thinking (low / med / high)"],
-  ["Ctrl+M", "Open the model picker"],
-  ["/", "Open slash-command autocomplete"],
-  ["Tab", "Cycle focus / complete slash command"],
-  ["↑ / ↓", "Move selection"],
-  ["Enter", "Submit / run / install"],
-  ["? ", "Toggle this help"],
-  ["Esc", "Close overlay / back to Chat"],
+  ["Shift+← / →", "Switch Chat / Skills / MCP"],
+  ["Shift+Tab", "Normal ↔ Planning"],
+  ["Ctrl+M", "Pick model"],
+  ["Ctrl+A", "Manual ↔ Autonomous"],
+  ["Ctrl+T", "Thinking depth"],
+  ["/", "Slash commands"],
+  ["?", "This help (empty prompt)"],
+  ["Esc", "Close / back to Chat"],
+  ["F1 F2 F3", "Pages (legacy)"],
 ];
 
-/** Full-screen help overlay (terminals can't dim-and-float): keys + slash table. */
+/** Full-screen help overlay (terminals can't dim-and-float). */
 export function HelpOverlay(): React.ReactElement {
   return (
     <Box flexDirection="column" paddingX={1}>
-      <SectionHeader label="help" color={theme.violet} />
+      <Text>
+        <Text color={theme.violet}>{"▌ "}</Text>
+        <Text bold color={theme.fg2}>
+          HELP
+        </Text>
+      </Text>
       <Box marginTop={1}>
         <Box flexDirection="column" width={42} flexShrink={0}>
           <Text color={theme.dim}>KEYS</Text>
