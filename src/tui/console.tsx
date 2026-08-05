@@ -41,7 +41,7 @@ import type { StatusProps } from "./statusbar.js";
 import { HelpOverlay } from "./help.js";
 import { helpLines, filterCommands } from "./commands.js";
 import { ChatPage } from "./pages/chat.js";
-import { FactoryPage, GEN_PRESETS, type FactoryFocus, type GenPreset, type ToolChip } from "./pages/factory.js";
+import { FactoryPage, type FactoryFocus, type ToolChip } from "./pages/factory.js";
 import { McpPage, MCP_DIRECTORY, type McpFocus, type McpPanel } from "./pages/mcp.js";
 
 /** Nav escape sequences Ink's useInput swallows; parsed off raw stdin so they
@@ -91,8 +91,6 @@ export function Console(): React.ReactElement {
   const [factoryFocus, setFactoryFocus] = useState<FactoryFocus>("goal");
   const [factoryTools, setFactoryTools] = useState<Set<ToolId> | null>(null);
   const [toolIdx, setToolIdx] = useState(0);
-  const [genIdx, setGenIdx] = useState(0);
-  const [preset, setPreset] = useState<GenPreset>("auto");
   const [preview, setPreview] = useState("");
 
   // F3 MCP Manager state.
@@ -252,19 +250,13 @@ export function Console(): React.ReactElement {
     // ── Page 2 (Skill Builder) ──
     if (page === 2) {
       if (key.tab && !key.shift) {
-        return setFactoryFocus((f) =>
-          f === "goal" ? "tools" : f === "tools" ? "gen" : f === "gen" ? "generate" : "goal",
-        );
+        return setFactoryFocus((f) => (f === "goal" ? "tools" : f === "tools" ? "generate" : "goal"));
       }
       if (factoryFocus === "tools") {
         const chips = toolChips();
         if (key.leftArrow) return setToolIdx((i) => (i + chips.length - 1) % Math.max(1, chips.length));
         if (key.rightArrow) return setToolIdx((i) => (i + 1) % Math.max(1, chips.length));
         if (ch === " ") return toggleTool(toolIdx);
-      }
-      if (factoryFocus === "gen") {
-        if (key.leftArrow) return selectPreset((genIdx + GEN_PRESETS.length - 1) % GEN_PRESETS.length);
-        if (key.rightArrow) return selectPreset((genIdx + 1) % GEN_PRESETS.length);
       }
       if (factoryFocus === "generate" && key.return) return void runFactoryBuild();
       return;
@@ -330,10 +322,6 @@ export function Console(): React.ReactElement {
       else next.add(chip.id);
       return next;
     });
-  }
-  function selectPreset(i: number): void {
-    setGenIdx(i);
-    setPreset(GEN_PRESETS[i]!);
   }
   function selectedTargets(): ToolId[] {
     const set = [...(factoryTools ?? new Set<ToolId>())];
@@ -855,8 +843,6 @@ export function Console(): React.ReactElement {
               onSubmitGoal={() => void runFactoryBuild()}
               tools={toolChips()}
               toolIdx={toolIdx}
-              presetSel={preset}
-              genIdx={genIdx}
               focus={confirm ? "generate" : factoryFocus}
               preview={preview}
               busy={busy}
