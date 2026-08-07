@@ -5,9 +5,8 @@ import { SectionHeader } from "./components.js";
 import { COMMANDS } from "./commands.js";
 
 const KEYS: [string, string][] = [
-  ["Shift+← / Shift+→", "Previous / next page"],
-  ["1 / 2 / 3", "Chat · Skills · MCP (when not typing)"],
-  ["F1 / F2 / F3", "Same pages (legacy function keys)"],
+  ["Shift+← / Shift+→", "Previous / next page (always)"],
+  ["F1 / F2 / F3", "Same pages (legacy)"],
   ["Shift+Tab", "Toggle Normal / Planning mode"],
   ["Ctrl+A", "Cycle autonomy (manual / auto)"],
   ["Ctrl+T", "Cycle thinking (low / med / high)"],
