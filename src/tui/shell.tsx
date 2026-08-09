@@ -6,16 +6,11 @@ import { EnvRail, type Routing } from "./rail.js";
 import { StatusBar, type StatusProps } from "./statusbar.js";
 import type { HomeData } from "./data.js";
 import { version as VERSION } from "./version.js";
+import { HUB_TABS, type Page } from "./tabs.js";
 
-export type Page = 1 | 2 | 3;
+export type { Page };
 
-const TABS: { page: Page; key: string; label: string }[] = [
-  { page: 1, key: "1", label: "Chat" },
-  { page: 2, key: "2", label: "Skills" },
-  { page: 3, key: "3", label: "MCP" },
-];
-
-/** Three-zone shell: header (logo · tabs · model) / body (rail + page) / status bar. */
+/** Header (brand · tabs · model) / body / status. Chat has no environment rail. */
 export function Shell({
   page,
   home,
@@ -34,13 +29,11 @@ export function Shell({
   children: React.ReactNode;
 }): React.ReactElement {
   const { stdout } = useStdout();
-  // Constrain width only when the real terminal width is known; in headless
-  // renders (tests) leave it natural so content lays out without hard wrapping.
   const cols = stdout?.columns ? Math.min(stdout.columns, 132) : undefined;
+  const showRail = page !== 1;
 
   return (
     <Box flexDirection="column" width={cols}>
-      {/* ── header ── */}
       <Box paddingX={2} borderStyle="round" borderColor={theme.line}>
         <Box flexGrow={0}>
           <Text color={theme.accent}>◤ </Text>
@@ -50,7 +43,7 @@ export function Shell({
           <Text color={theme.muted}>{`  v${VERSION}`}</Text>
         </Box>
         <Box flexGrow={1} justifyContent="center">
-          {TABS.map((t, i) => {
+          {HUB_TABS.map((t, i) => {
             const on = page === t.page;
             return (
               <Box key={t.page} marginLeft={i ? 1 : 0}>
@@ -62,30 +55,26 @@ export function Shell({
               </Box>
             );
           })}
-          <Box marginLeft={2}>
-            <Text color={theme.dim}>{"⇄ Shift ←/→"}</Text>
-          </Box>
         </Box>
         <Box flexGrow={0}>
           <Text color={online ? theme.ok : theme.muted}>● </Text>
-          <Text color={theme.fg2}>{online ? "local " : "offline "}</Text>
           <Text color={theme.violet} bold>
             {footer.model}
           </Text>
         </Box>
       </Box>
 
-      {/* ── body: rail + main ── */}
       <Box>
-        <Box width={RAIL_W} flexShrink={0}>
-          <EnvRail home={home} ollama={ollama} routing={routing} />
-        </Box>
+        {showRail && (
+          <Box width={RAIL_W} flexShrink={0}>
+            <EnvRail home={home} ollama={ollama} routing={routing} />
+          </Box>
+        )}
         <Box flexGrow={1} flexDirection="column" paddingX={1}>
           {children}
         </Box>
       </Box>
 
-      {/* ── status bar ── */}
       <StatusBar {...footer} />
     </Box>
   );
