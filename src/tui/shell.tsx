@@ -1,45 +1,35 @@
 import React from "react";
 import { Box, Text, useStdout } from "ink";
-import Gradient from "ink-gradient";
-import { theme, LOGO_GRADIENT, RAIL_W } from "./theme.js";
-import { EnvRail, type Routing } from "./rail.js";
+import { theme } from "./theme.js";
 import { StatusBar, type StatusProps } from "./statusbar.js";
-import type { HomeData } from "./data.js";
 import { version as VERSION } from "./version.js";
 import { HUB_TABS, type Page } from "./tabs.js";
 
 export type { Page };
 
-/** Header (brand · tabs · model) / body / status. Chat has no environment rail. */
+/** Header (brand · tabs · model) / body / status. No sidebar. */
 export function Shell({
   page,
-  home,
   online,
-  ollama,
-  routing,
   footer,
   children,
 }: {
   page: Page;
-  home: HomeData | null;
   online: boolean;
-  ollama: boolean;
-  routing: Routing;
   footer: StatusProps;
   children: React.ReactNode;
 }): React.ReactElement {
   const { stdout } = useStdout();
   const cols = stdout?.columns ? Math.min(stdout.columns, 132) : undefined;
-  const showRail = page !== 1;
 
   return (
     <Box flexDirection="column" width={cols}>
       <Box paddingX={2} borderStyle="round" borderColor={theme.line}>
         <Box flexGrow={0}>
           <Text color={theme.accent}>◤ </Text>
-          <Gradient colors={LOGO_GRADIENT}>
-            <Text bold>PEREZDEV HUB</Text>
-          </Gradient>
+          <Text bold color={theme.accent}>
+            PEREZDEV HUB
+          </Text>
           <Text color={theme.muted}>{`  v${VERSION}`}</Text>
         </Box>
         <Box flexGrow={1} justifyContent="center">
@@ -48,9 +38,9 @@ export function Shell({
             return (
               <Box key={t.page} marginLeft={i ? 1 : 0}>
                 {on ? (
-                  <Text backgroundColor={theme.accent} color={theme.ink} bold>{` ${t.key} ${t.label} `}</Text>
+                  <Text backgroundColor={theme.accent} color={theme.ink} bold>{` ${t.label} `}</Text>
                 ) : (
-                  <Text color={theme.muted}>{` ${t.key} ${t.label} `}</Text>
+                  <Text color={theme.muted}>{` ${t.label} `}</Text>
                 )}
               </Box>
             );
@@ -64,15 +54,8 @@ export function Shell({
         </Box>
       </Box>
 
-      <Box>
-        {showRail && (
-          <Box width={RAIL_W} flexShrink={0}>
-            <EnvRail home={home} ollama={ollama} routing={routing} />
-          </Box>
-        )}
-        <Box flexGrow={1} flexDirection="column" paddingX={1}>
-          {children}
-        </Box>
+      <Box flexGrow={1} flexDirection="column" paddingX={1}>
+        {children}
       </Box>
 
       <StatusBar {...footer} />

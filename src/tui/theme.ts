@@ -25,7 +25,6 @@ export const theme = {
 export const LOGO_GRADIENT = ["#34d8e6", "#7c8cff", "#b89dff"];
 
 // Layout (character cells).
-export const RAIL_W = 28; // Skills/MCP detected-tools rail; Chat has no rail
 export const BUILDER_FORM_W = 46; // F2 compose column
 export const MCP_PANEL_W = 40; // F3 right panel
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Text, useApp, useInput, useStdin } from "ink";
-import { theme } from "./theme.js";
+import { useApp, useInput, useStdin } from "ink";
 import { Engine } from "../engine/bridge.js";
 import { detectOllama, promptModel, THINKING_SYSTEM, type OllamaStatus } from "../core/ollama.js";
 import { resolveProvider, providerHint } from "../core/provider.js";
@@ -43,25 +42,8 @@ import { helpLines, filterCommands } from "./commands.js";
 import { ChatPage } from "./pages/chat.js";
 import { FactoryPage, type FactoryFocus, type ToolChip } from "./pages/factory.js";
 import { McpPage, MCP_DIRECTORY, type McpFocus, type McpPanel } from "./pages/mcp.js";
-
-/** Nav escape sequences Ink's useInput swallows; parsed off raw stdin so they
- *  work even while a TextInput is focused. Shift+←/→ cycles pages — it's the
- *  Mac-safe binding: plain arrows collide with the text cursor, and Ctrl+arrows
- *  trigger macOS Mission Control (desktop swiping). F1–F3 stay as legacy aliases. */
-type NavIntent = { page: Page } | { cycle: -1 | 1 };
-function navFromData(data: string): NavIntent | null {
-  const d = data.startsWith("\x1b") ? data.slice(1) : data;
-  // Function keys F1–F3 (SS3 / CSI / linux-console forms) jump to a page.
-  if (d === "OP" || d === "[11~" || d === "[[A") return { page: 1 };
-  if (d === "OQ" || d === "[12~" || d === "[[B") return { page: 2 };
-  if (d === "OR" || d === "[13~" || d === "[[C") return { page: 3 };
-  // Shift+Arrow cycles pages — safe on laptops (no Mission Control swipe).
-  if (d === "[1;2C") return { cycle: 1 };
-  if (d === "[1;2D") return { cycle: -1 };
-  return null;
-}
-
-const PAGE_COUNT = 3;
+import { isBareHelpInput, navFromData, nextPage } from "./nav.js";
+import { ModelPicker } from "./model-picker.js";
 
 /** The whole UI: tabbed console (Chat · Skill Builder · MCP). */
 export function Console(): React.ReactElement {
@@ -185,7 +167,15 @@ export function Console(): React.ReactElement {
   function cyclePage(dir: -1 | 1): void {
     setHelp(false);
     setModelPicker(false);
-    setPage((p) => (((p - 1 + dir + PAGE_COUNT) % PAGE_COUNT) + 1) as Page);
+    setPage((p) => nextPage(p, dir));
+  }
+
+  function onFieldChange(prev: string, next: string, setField: (s: string) => void): void {
+    if (isBareHelpInput(next, prev)) {
+      setHelp(true);
+      return;
+    }
+    setField(next);
   }
 
   const typing =
@@ -226,7 +216,12 @@ export function Console(): React.ReactElement {
       return;
     }
 
-    if (!typing && ch === "?") return setHelp(true);
+    if (ch === "?") {
+      if (page === 1 && input.trim() === "") return setHelp(true);
+      if (page === 2 && factoryFocus === "goal" && goal.trim() === "") return setHelp(true);
+      if (page === 3 && focus3 === "input" && mcpInput.trim() === "") return setHelp(true);
+      if (!typing) return setHelp(true);
+    }
     // Digit nav works on any non-typing page (Chat is always typing → use Shift+←/→).
     if (!typing && ch >= "1" && ch <= "3") return goto(Number(ch) as Page);
 
@@ -811,7 +806,7 @@ export function Console(): React.ReactElement {
   };
 
   return (
-    <Shell page={page} home={home} online={online} ollama={status?.available ?? false} routing={routing} footer={footer}>
+    <Shell page={page} online={online} footer={footer}>
       {help ? (
         <HelpOverlay />
       ) : modelPicker ? (
@@ -827,11 +822,15 @@ export function Console(): React.ReactElement {
               online={online}
               input={input}
               setInput={(v) => {
+                if (isBareHelpInput(v, input)) {
+                  setHelp(true);
+                  return;
+                }
                 setInput(v);
                 setSlashSel(0);
               }}
               submit={submit}
-              inputActive={page === 1 && !confirm}
+              inputActive={page === 1 && !confirm && !help}
               slashOpen={slashOpen}
               slashSel={slashSel}
             />
@@ -839,7 +838,7 @@ export function Console(): React.ReactElement {
           {page === 2 && (
             <FactoryPage
               goal={goal}
-              setGoal={setGoal}
+              setGoal={(v) => onFieldChange(goal, v, setGoal)}
               onSubmitGoal={() => void runFactoryBuild()}
               tools={toolChips()}
               toolIdx={toolIdx}
@@ -858,7 +857,7 @@ export function Console(): React.ReactElement {
               focus={confirm ? "list" : focus3}
               panel={panel}
               mcpInput={mcpInput}
-              setMcpInput={setMcpInput}
+              setMcpInput={(v) => onFieldChange(mcpInput, v, setMcpInput)}
               onMcpSubmit={compileMcp}
             />
           )}
@@ -866,33 +865,6 @@ export function Console(): React.ReactElement {
         </>
       )}
     </Shell>
-  );
-}
-
-/** Inline model picker overlay (Ctrl+M). */
-function ModelPicker({ models, sel, active }: { models: string[]; sel: number; active: string }): React.ReactElement {
-  return (
-    <Box flexDirection="column" paddingX={1}>
-      <Text color={theme.dim}>SELECT MODEL</Text>
-      {models.length === 0 ? (
-        <Text color={theme.muted}>no models — /pull one or set a cloud key</Text>
-      ) : (
-        models.map((m, i) => (
-          <Box key={m}>
-            <Box width={2} flexShrink={0}>
-              <Text color={theme.accent}>{i === sel ? "›" : " "}</Text>
-            </Box>
-            <Text color={i === sel ? theme.accent : theme.fg2} bold={i === sel}>
-              {m}
-            </Text>
-            {m === active && <Text color={theme.ok}>{"  ● active"}</Text>}
-          </Box>
-        ))
-      )}
-      <Box marginTop={1}>
-        <Text color={theme.dim}>↑↓ move · enter select · esc cancel</Text>
-      </Box>
-    </Box>
   );
 }
 
