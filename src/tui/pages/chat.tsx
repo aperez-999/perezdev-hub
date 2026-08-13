@@ -3,11 +3,12 @@ import { Box, Text, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Row, SectionHeader, type LogLine, type Mode } from "../components.js";
+import { Row, type LogLine, type Mode } from "../components.js";
 import { SlashMenu } from "../slash.js";
+import { OFFLINE_HINT, PROMPT_PLACEHOLDER } from "../copy.js";
+import { EmptyChat } from "../empty-chat.js";
 
-/** Page 1 — the chat engine: category log, offline banner, slash menu, capsule.
- *  Detection badges now live in the persistent rail (see rail.tsx). */
+/** Page 1 — conversation + prompt. Chrome (model, tabs) lives in the shell. */
 export function ChatPage({
   log,
   busy,
@@ -34,16 +35,15 @@ export function ChatPage({
   slashSel: number;
 }): React.ReactElement {
   const { stdout } = useStdout();
-  // Derive the visible log height from the terminal instead of a magic number.
   const rows = Math.max(6, Math.min((stdout?.rows ?? 40) - 16, 24));
   const recent = log.slice(-rows);
   const focused = inputActive || slashOpen;
+  const empty = log.length === 0 && !busy;
 
   return (
     <Box flexDirection="column" flexGrow={1}>
-      <SectionHeader label="chat engine" />
-
       <Box flexDirection="column" flexGrow={1} marginTop={1}>
+        {empty && <EmptyChat />}
         {recent.map((l, i) => (
           <Row key={i} line={l} />
         ))}
@@ -60,8 +60,7 @@ export function ChatPage({
       {!online && (
         <Box borderStyle="round" borderColor={theme.warn} paddingX={1} marginX={2} marginTop={1}>
           <Text color={theme.warn} wrap="wrap">
-            ⚠ No model yet. Run <Text bold>ollama pull qwen2.5-coder</Text> or set
-            ANTHROPIC_API_KEY / OPENAI_API_KEY for cloud.
+            {OFFLINE_HINT}
           </Text>
         </Box>
       )}
@@ -75,11 +74,8 @@ export function ChatPage({
           onChange={setInput}
           onSubmit={submit}
           focus={inputActive}
-          placeholder="type a prompt or /command…"
+          placeholder={PROMPT_PLACEHOLDER}
         />
-      </Box>
-      <Box paddingX={2}>
-        <Text color={theme.dim}>Enter send · / commands · @file context · Shift+Tab plan · Ctrl+M model</Text>
       </Box>
     </Box>
   );
