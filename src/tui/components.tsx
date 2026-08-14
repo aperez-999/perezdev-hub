@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "./theme.js";
+import { CONFIRM_TITLE } from "./copy.js";
 
 export type Mode = "normal" | "plan";
 export type Autonomy = "manual" | "auto";
@@ -33,8 +34,8 @@ export function SectionHeader({
 }
 
 const GLYPH: Record<LogKind, [string, string]> = {
-  user: ["›", theme.violet],
-  ai: [" ", theme.fg],
+  user: ["you", theme.violet],
+  ai: ["  ", theme.fg],
   ok: ["✔", theme.ok],
   err: ["✘", theme.bad],
   info: ["●", theme.accent],
@@ -44,12 +45,15 @@ const GLYPH: Record<LogKind, [string, string]> = {
 export function Row({ line }: { line: LogLine }): React.ReactElement {
   const [glyph, color] = GLYPH[line.kind];
   const bodyColor = line.kind === "user" ? theme.fg : line.kind === "ai" ? theme.fg : theme.fg2;
+  const labelW = line.kind === "user" ? 4 : 2;
   return (
     <Box>
-      <Box width={2} flexShrink={0}>
-        <Text color={color}>{glyph}</Text>
+      <Box width={labelW} flexShrink={0}>
+        <Text color={color} bold={line.kind === "user"}>
+          {glyph}
+        </Text>
       </Box>
-      <Text color={bodyColor} bold={line.kind === "user"} wrap="wrap">
+      <Text color={bodyColor} wrap="wrap">
         {line.text}
       </Text>
     </Box>
@@ -74,9 +78,9 @@ export function ConfirmBox({ desc, diff }: { desc: string; diff?: string[] }): R
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.warn} paddingX={1} marginTop={1}>
       <Text color={theme.warn} bold>
-        ⚠ MANUAL CONFIRMATION REQUIRED
+        {CONFIRM_TITLE}
       </Text>
-      <Text color={theme.fg}>{desc}?</Text>
+      <Text color={theme.fg}>{desc}</Text>
       {diff && diff.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
           {diff.map((d, i) => {
