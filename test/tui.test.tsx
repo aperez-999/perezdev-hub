@@ -52,7 +52,7 @@ describe("Console TUI", () => {
     const f = lastFrame() ?? "";
     expect(f).toMatch(/PEREZDEV HUB/);
     expect(f).toMatch(/v0\.2\.0/);
-    expect(f).toMatch(/1 Chat/);
+    expect(f).toMatch(/ Chat /);
     expect(f).toMatch(/Ask anything about this repo/);
     expect(f).not.toMatch(/ENVIRONMENT/);
     expect(f).toMatch(/manual/);
@@ -174,11 +174,25 @@ describe("Console TUI", () => {
     await until(() => /frontend-dev/.test(lastFrame() ?? ""), 10000);
   }, 25000);
 
-  it("? opens the help overlay and Esc closes it", async () => {
+  it("? on an empty Chat prompt opens help and Esc returns to Chat", async () => {
     const { lastFrame, stdin } = render(<App />);
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write(F3); // leave the chat input so single-key shortcuts work
+    stdin.write("?");
+    await until(() => /SLASH COMMANDS/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/KEYS/);
+    expect(lastFrame()).toMatch(/This help \(empty prompt\)/);
+    await wait(200);
+    stdin.write(ESC);
+    await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /Ask anything about this repo/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).not.toMatch(/› \?/);
+  }, 15000);
+
+  it("? opens the help overlay from MCP and Esc closes it", async () => {
+    const { lastFrame, stdin } = render(<App />);
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
+    await wait(800);
+    stdin.write(F3);
     await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("?");
@@ -189,13 +203,16 @@ describe("Console TUI", () => {
     await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /Local Filesystem/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("renders three page tabs without a header nav hint", async () => {
+  it("renders three page tabs without numbered chrome or a header nav hint", async () => {
     const { lastFrame } = render(<App />);
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
-    expect(f).toMatch(/1 Chat/);
-    expect(f).toMatch(/2 Skills/);
-    expect(f).toMatch(/3 MCP/);
+    expect(f).toMatch(/ Chat /);
+    expect(f).toMatch(/ Skills /);
+    expect(f).toMatch(/ MCP /);
+    expect(f).not.toMatch(/1 Chat/);
+    expect(f).not.toMatch(/2 Skills/);
+    expect(f).not.toMatch(/3 MCP/);
     expect(f).not.toMatch(/⇄/);
   });
 
