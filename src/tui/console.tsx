@@ -114,15 +114,9 @@ export function Console(): React.ReactElement {
 
   useEffect(() => {
     engineRef.current = new Engine();
-    push("info", "Connecting to local Ollama API instance…");
     void refresh();
     detectOllama(engineRef.current).then((s) => {
       setStatus(s);
-      const p = resolveProvider(s);
-      if (s.available && s.normal) push("ok", `Detected models: ${s.normal} (Normal), ${s.thinking ?? s.normal} (Think)`);
-      else if (p.kind === "cloud") push("ok", `No local models — using cloud: ${p.label}`);
-      else push("info", providerHint(p));
-      push("info", "Type a prompt, or /help for commands.  Shift+←/→ or 1-3 switch pages.");
     });
     return () => engineRef.current?.close();
   }, []);
