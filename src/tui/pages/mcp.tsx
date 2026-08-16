@@ -111,7 +111,7 @@ export function McpPage({
           </Box>
         </Box>
 
-        {/* ── context panel ── */}
+        {panel.kind !== "empty" && (
         <Box
           flexDirection="column"
           width={wide ? MCP_PANEL_W : undefined}
@@ -122,14 +122,6 @@ export function McpPage({
           borderColor={theme.line}
           paddingX={1}
         >
-          {panel.kind === "empty" && (
-            <>
-              <Text color={theme.dim}>SCANNER</Text>
-              <Text color={theme.muted} wrap="wrap">
-                Run the discovery scanner to see MCP servers recommended for this repo, or type a custom integration to compile a config.
-              </Text>
-            </>
-          )}
           {panel.kind === "scan" && (
             <>
               <Text color={theme.dim}>RECOMMENDED FOR THIS REPO</Text>
@@ -160,6 +152,7 @@ export function McpPage({
             </>
           )}
         </Box>
+        )}
       </Box>
 
       <Box flexDirection="column" marginTop={1}>
