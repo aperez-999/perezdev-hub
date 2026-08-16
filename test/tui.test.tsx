@@ -84,11 +84,11 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
-    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/GOAL/);
+    await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/Describe the agent/);
     stdin.write("OR"); // F3
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/Run Discovery Scanner/);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/Discover from repo/);
     stdin.write(ESC); // Escape -> back to chat
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
   }, 15000);
@@ -99,7 +99,7 @@ describe("Console TUI", () => {
       JSON.stringify({ last_active_tab: 3, autonomy_mode: "auto", mcp_ignored_servers: [] }),
     );
     const { lastFrame } = render(<App />);
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/auto/);
   }, 15000);
 
@@ -108,12 +108,12 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     const f = lastFrame() ?? "";
     expect(f).toMatch(/Local Filesystem/);
     expect(f).toMatch(/PostgreSQL Database/);
-    expect(f).toMatch(/Run Discovery Scanner/);
-    expect(f).toMatch(/integration prompt/);
+    expect(f).toMatch(/Discover from repo/);
+    expect(f).toMatch(/custom server/);
   }, 15000);
 
   it("F3 Enter on a directory item pops an install confirm with a diff", async () => {
@@ -121,7 +121,7 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // install the highlighted (first) item
     await until(() => /install mcp filesystem/.test(lastFrame() ?? ""), 6000);
@@ -133,11 +133,10 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
-    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);
     const f = lastFrame() ?? "";
-    expect(f).toMatch(/GOAL/);
-    expect(f).toMatch(/TARGET TOOLS/);
-    expect(f).toMatch(/SKILL\.md PREVIEW/);
+    expect(f).toMatch(/Install into/);
+    expect(f).toMatch(/preview/);
   }, 15000);
 
   it("/build pops an inline manual confirm and applies on Y", async () => {
@@ -166,7 +165,7 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2 → goal field is focused by default
-    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     await typeLine(stdin, "frontend dev");
     await until(() => /Write these files/.test(lastFrame() ?? ""), 6000);
@@ -180,14 +179,14 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3); // leave the chat input so single-key shortcuts work
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("?");
     await until(() => /SLASH COMMANDS/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/KEYS/);
     await wait(200);
     stdin.write(ESC);
-    await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /Local Filesystem/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("renders three page tabs without a header nav hint", async () => {
@@ -205,11 +204,11 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(SHIFT_LEFT); // page 1 → wrap to page 3
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 3 → wrap to page 1
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 1 → page 2
-    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("digit keys 1-3 jump pages when not typing", async () => {
@@ -217,10 +216,10 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3); // leave the chat input so single-key nav applies
-    await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
     await wait(150);
     stdin.write("2");
-    await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
+    await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 });
 
