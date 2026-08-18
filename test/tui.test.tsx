@@ -46,23 +46,21 @@ async function until(fn: () => boolean, timeout = 4000): Promise<void> {
 }
 
 describe("Console TUI", () => {
-  it("renders the three-zone shell: header, environment rail, and status bar", async () => {
+  it("renders the workbench shell: header, chat, and compact status", async () => {
     const { lastFrame } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
     expect(f).toMatch(/PEREZDEV HUB/);
-    expect(f).toMatch(/v0\.1\.0/); // version read from package.json, not hardcoded
-    expect(f).toMatch(/ENVIRONMENT/);
-    expect(f).toMatch(/IDES/);
-    expect(f).toMatch(/CLIS/);
-    expect(f).toMatch(/ROUTING/);
-    expect(f).toMatch(/autonomy/);
+    expect(f).toMatch(/v0\.2\.0/);
+    expect(f).toMatch(/1 Chat/);
+    expect(f).toMatch(/Ask anything about this repo/);
+    expect(f).not.toMatch(/ENVIRONMENT/);
     expect(f).toMatch(/manual/);
   });
 
   it("runs the /help slash command into the log stream", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(1000); // let the engine/ollama detect settle
     await typeLine(stdin, "/help");
     await until(() => /commands:/.test(lastFrame() ?? ""), 6000);
@@ -72,7 +70,7 @@ describe("Console TUI", () => {
 
   it("shows the slash autocomplete menu when the input starts with /", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     for (const ch of "/mc") {
       stdin.write(ch);
@@ -83,7 +81,7 @@ describe("Console TUI", () => {
 
   it("switches pages with function keys and Escape", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
     await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
@@ -92,7 +90,7 @@ describe("Console TUI", () => {
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     expect(lastFrame()).toMatch(/Run Discovery Scanner/);
     stdin.write(ESC); // Escape -> back to chat
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("restores the last active tab from ~/.perezdevrc on boot", async () => {
@@ -107,7 +105,7 @@ describe("Console TUI", () => {
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
@@ -120,19 +118,19 @@ describe("Console TUI", () => {
 
   it("F3 Enter on a directory item pops an install confirm with a diff", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3);
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     stdin.write("\r"); // install the highlighted (first) item
     await until(() => /install mcp filesystem/.test(lastFrame() ?? ""), 6000);
-    expect(lastFrame()).toMatch(/MANUAL CONFIRMATION REQUIRED/);
+    expect(lastFrame()).toMatch(/Write these files/);
   }, 15000);
 
   it("opens the Skill Builder with goal field and live preview on F2", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2
     await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
@@ -146,7 +144,7 @@ describe("Console TUI", () => {
     const { lastFrame, stdin } = render(<App />);
     await wait(1300);
     await typeLine(stdin, "/build review my code for bugs");
-    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    await until(() => /Write these files/.test(lastFrame() ?? ""), 6000);
     expect(lastFrame()).toMatch(/\[Y\] Approve/);
     await wait(200);
     stdin.write("y");
@@ -157,21 +155,21 @@ describe("Console TUI", () => {
     const { lastFrame, stdin } = render(<App />);
     await wait(1300);
     await typeLine(stdin, "/build a quick helper");
-    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    await until(() => /Write these files/.test(lastFrame() ?? ""), 6000);
     await wait(200);
     stdin.write("n");
-    await until(() => /cancelled/.test(lastFrame() ?? "") && !/MANUAL CONFIRMATION/.test(lastFrame() ?? ""), 6000);
+    await until(() => /cancelled/.test(lastFrame() ?? "") && !/Write these files/.test(lastFrame() ?? ""), 6000);
   }, 20000);
 
   it("F2 Skill Builder: typing a goal + Enter generates the agent", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write("OQ"); // F2 → goal field is focused by default
     await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
     await wait(200);
     await typeLine(stdin, "frontend dev");
-    await until(() => /MANUAL CONFIRMATION REQUIRED/.test(lastFrame() ?? ""), 6000);
+    await until(() => /Write these files/.test(lastFrame() ?? ""), 6000);
     await wait(200);
     stdin.write("y");
     await until(() => /frontend-dev/.test(lastFrame() ?? ""), 10000);
@@ -179,7 +177,7 @@ describe("Console TUI", () => {
 
   it("? opens the help overlay and Esc closes it", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3); // leave the chat input so single-key shortcuts work
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
@@ -192,31 +190,31 @@ describe("Console TUI", () => {
     await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("renders three page tabs with the Shift+←/→ nav hint", async () => {
+  it("renders three page tabs without a header nav hint", async () => {
     const { lastFrame } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
     expect(f).toMatch(/1 Chat/);
     expect(f).toMatch(/2 Skills/);
     expect(f).toMatch(/3 MCP/);
-    expect(f).toMatch(/Shift/);
+    expect(f).not.toMatch(/⇄/);
   });
 
   it("Shift+←/→ cycles pages and wraps at the ends", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(SHIFT_LEFT); // page 1 → wrap to page 3
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 3 → wrap to page 1
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""), 4000);
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 1 → page 2
     await until(() => /SKILL BUILDER/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
   it("digit keys 1-3 jump pages when not typing", async () => {
     const { lastFrame, stdin } = render(<App />);
-    await until(() => /CHAT ENGINE/.test(lastFrame() ?? ""));
+    await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(F3); // leave the chat input so single-key nav applies
     await until(() => /MCP MANAGER/.test(lastFrame() ?? ""), 4000);
@@ -227,16 +225,15 @@ describe("Console TUI", () => {
 });
 
 describe("Intro splash", () => {
-  it("holds on the quick-start card until a key is pressed", async () => {
+  it("holds on the enter hint until a key is pressed", async () => {
     let done = 0;
     const { lastFrame, stdin } = render(<Intro onDone={() => (done += 1)} />);
-    // Wait past the boot animation; the card must appear and then stay put.
-    await until(() => /QUICK START/.test(lastFrame() ?? ""), 6000);
-    expect(lastFrame()).toMatch(/press . to enter the hub/);
-    await wait(700); // it must NOT auto-advance
+    await until(() => /press . to enter the hub/.test(lastFrame() ?? ""), 6000);
+    expect(lastFrame()).not.toMatch(/QUICK START/);
+    expect(lastFrame()).not.toMatch(/scanning your environment/);
+    await wait(700);
     expect(done).toBe(0);
-    expect(lastFrame()).toMatch(/QUICK START/);
-    stdin.write("\r"); // Enter enters the hub
+    stdin.write("\r");
     await until(() => done === 1, 2000);
   }, 12000);
 });
