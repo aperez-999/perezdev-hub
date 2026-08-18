@@ -117,9 +117,11 @@ export function FactoryPage({
 
           <Box marginTop={1}>
             {focus === "generate" ? (
-              <Text backgroundColor={theme.violet} color={theme.ink} bold>{" Generate & Install "}</Text>
+              <Text backgroundColor={theme.violet} color={theme.ink} bold>
+                {" Generate "}
+              </Text>
             ) : (
-              <Text color={theme.muted}>{"[ Generate & Install ]"}</Text>
+              <Text color={theme.muted}>{"[ Generate ]"}</Text>
             )}
           </Box>
 
