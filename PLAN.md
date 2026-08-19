@@ -49,10 +49,11 @@ Goal: less clustered, animated where it helps, no template feel, no drift.
 **Follow** [`docs/tui-design-spec.md`](docs/tui-design-spec.md) (plus `PRODUCT.md` / `DESIGN.md`). Implement slices A→G in that spec; do not invent a fourth page.
 
 - [~] **Split `console.tsx`.** Partial: extracted the `commands` registry
-      (`src/tui/commands.ts`, one map: name → {usage, help}) and split the view into
-      `shell`/`rail`/`statusbar`/`slash`/`help` + the three pages. The `useHubActions`
-      hook and `useReducer` state consolidation are still TODO (state remains in
-      `console.tsx`). *Verify:* 123 tests green; `/help` is generated from the registry.
+      (`src/tui/commands.ts`), page nav (`src/tui/nav.ts`), model picker overlay,
+      `shell`/`statusbar`/`slash`/`help` + the three pages. The environment rail is
+      gone. The `useHubActions` hook and `useReducer` state consolidation are still
+      TODO (state remains in `console.tsx`). *Verify:* tests green; `/help` is
+      generated from the registry.
 - [x] **Single source of `/help`.** `helpLines()` + `SlashMenu` both read
       `COMMANDS` in `src/tui/commands.ts`, so they cannot drift. *Verified:* `/help` test
       asserts a registry command (`/build`) appears.
@@ -67,7 +68,7 @@ Goal: less clustered, animated where it helps, no template feel, no drift.
       *Verified:* TUI tests.
 - [x] **Version from package metadata.** `src/tui/version.ts` walks up to the
       `perezdev-hub` package.json (dev + bundled); `shell.tsx` shows `v{version}`.
-      *Verified:* header shows `v0.1.0` (test).
+      *Verified:* header shows `v0.2.0` (test).
 - [x] **Provider UX:** model picker (`Ctrl+M` → selectable list, with cloud entry),
       offline banner on the chat page, `/pull` streams progress into the activity line.
       *Verified:* smoke + tests. (`/pull` is a streamed line, not yet a graphical bar.)

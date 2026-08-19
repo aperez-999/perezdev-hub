@@ -6,7 +6,7 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  ◤ PEREZDEV HUB  v0.2.0     [1 Chat]  2 Skills  3 MCP   ● llama3 │
+│  ◤ PEREZDEV HUB  v0.2.0          Chat   Skills   MCP     ● llama3 │
 │                                                              │
 │  Ask anything about this repo.                               │
 │  Shift+← / Shift+→  Skills and MCP ·  ?  keys                │
@@ -71,11 +71,13 @@ In **Manual** autonomy any action that writes files pops an inline `[Y] Approve 
 | Key | Action |
 | --- | --- |
 | `Shift+←` / `Shift+→` | Previous / next page (works while typing) |
-| `F1` / `F2` / `F3` | Same pages (legacy) |
+| `?` | Help overlay (empty prompt; `/help` always works) |
+| `Ctrl+M` | Pick model |
 | `Shift+Tab` | Normal ↔ Planning mode (routes to a reasoning model) |
 | `Ctrl+A` | Manual ↔ Autonomous |
 | `Ctrl+T` | Thinking depth (low / medium / high) |
-| `Tab` (Page 3) | Cycle focus: directory → scanner → prompt field |
+| `Tab` (Skills / MCP) | Cycle compose fields |
+| `F1` / `F2` / `F3` | Same pages (legacy, not shown in chrome) |
 | `Esc` | Close overlay / dialog, return to chat |
 
 ### Slash commands (in the chat page)

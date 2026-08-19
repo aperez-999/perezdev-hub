@@ -1,6 +1,6 @@
 # TUI redesign spec
 
-**Status:** slices A–F landed (intro, quiet Chat, Skills form, MCP list). Slice G is README/help copy — mostly done; keep this file as the source of truth.  
+**Status:** slices A–G landed (intro, quiet Chat, Skills form, MCP list, copy/`?`/README). Keep this file as the source of truth.  
 **Follow:** `PRODUCT.md` (who/why) → `DESIGN.md` (look) → **this file** (screens, keys, SDLC, rollout).  
 **Do not implement from the current screenshot.** The live hub is the *from*; this is the *to*.
 
@@ -238,7 +238,7 @@ Matches distill: subtract first, then honesty, then pages.
 | **D** | Detection: present-only; Cursor-as-host | No five empty IDE dots on Chat |
 | **E** | Skills: one field, default auto, Generate primary; presets demoted | First Skills action is obvious |
 | **F** | MCP: omit empty side panel; Discover secondary | List is the page |
-| **G** | Copy + `?` keymap updated to match | README Keys table matches TUI |
+| **G** | Copy + `?` keymap updated to match | README Keys table matches TUI — done |
 
 Keep behavior: confirm+diff, slash registry, model picker, `Shift+←/→`, tests for overlay and confirm.
 
@@ -250,8 +250,8 @@ Keep behavior: confirm+diff, slash registry, model picker, `Shift+←/→`, test
 
 - `src/tui/intro.tsx` — real status or delete checklist; clear handoff
 - `src/tui/app.tsx` — alt screen / clear
-- `src/tui/shell.tsx` — header; no rail slot (or rail opt-in later)
-- `src/tui/rail.tsx` — unused on Chat; optional compact strip later
+- `src/tui/shell.tsx` — header; no rail slot
+- `src/tui/nav.ts` — Shift-arrows / F1–F3 / empty-`?` help
 - `src/tui/statusbar.tsx` — no model duplicate
 - `src/tui/pages/chat.tsx` — transcript + empty state
 - `src/tui/console.tsx` — stop tutorial `push`s; nav copy
@@ -276,4 +276,4 @@ Keep behavior: confirm+diff, slash registry, model picker, `Shift+←/→`, test
 
 - **Intro:** keep a **short** skippable logo, no checklist. (Override: delete intro entirely.)
 - **`?` vs typing:** empty prompt: `?` opens help; non-empty: `?` is a character. `/help` always works.
-- **Rail:** gone on Chat. Not brought back unless a user setting `rail: true` is requested later.
+- **Rail:** gone. Not brought back unless a user setting `rail: true` is requested later.
