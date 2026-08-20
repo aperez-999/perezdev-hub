@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { exists } from "../util/fs-safe.js";
 import { home } from "./config.js";
+import { isCursorHost } from "./host.js";
 
 export interface EcoTool {
   id: string;
@@ -34,8 +35,13 @@ export async function scanEcosystem(dir: string = process.cwd(), h: string = hom
     ["aider", "aider", [join(dir, ".aider.conf.yml"), join(dir, ".aider.instructions.md"), join(h, ".aider.conf.yml")]],
   ];
 
+  const cursorHost = isCursorHost();
   const out: EcoTool[] = [];
-  for (const [id, label, paths] of ide) out.push({ id, label, kind: "ide", present: await any(paths) });
+  for (const [id, label, paths] of ide) {
+    const fromDisk = await any(paths);
+    const present = id === "cursor" ? fromDisk || cursorHost : fromDisk;
+    out.push({ id, label, kind: "ide", present });
+  }
   for (const [id, label, paths] of cli) out.push({ id, label, kind: "cli", present: await any(paths) });
   return out;
 }
