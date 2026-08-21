@@ -1,6 +1,6 @@
 # TUI redesign spec
 
-**Status:** slices A–D landed in the TUI (intro handoff, quiet Chat, one chrome, present-only rail). Continue E–G when we pick up the next batch.  
+**Status:** slices A–F landed (intro, quiet Chat, Skills form, MCP list). Slice G is README/help copy — mostly done; keep this file as the source of truth.  
 **Follow:** `PRODUCT.md` (who/why) → `DESIGN.md` (look) → **this file** (screens, keys, SDLC, rollout).  
 **Do not implement from the current screenshot.** The live hub is the *from*; this is the *to*.
 
