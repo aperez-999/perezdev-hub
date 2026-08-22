@@ -13,6 +13,8 @@ beforeEach(async () => {
   h = await mkdtemp(join(tmpdir(), "ecohome-"));
   process.env.HOME = h;
   delete process.env.XDG_CONFIG_HOME;
+  delete process.env.CURSOR_TRACE_ID;
+  delete process.env.CURSOR_AGENT;
 });
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
@@ -42,6 +44,13 @@ describe("scanEcosystem", () => {
     const eco = await scanEcosystem(dir, h);
     expect(get(eco, "claude-code").present).toBe(true);
     expect(get(eco, "cursor").present).toBe(false);
+  });
+
+  it("marks cursor present when running inside the Cursor host", async () => {
+    process.env.CURSOR_TRACE_ID = "1";
+    const eco = await scanEcosystem(dir, h);
+    expect(get(eco, "cursor").present).toBe(true);
+    delete process.env.CURSOR_TRACE_ID;
   });
 });
 
