@@ -6,19 +6,17 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  ◤ PEREZDEV HUB      [1] Chat   [2] Skills   [3] MCP          │
-│  ───────────────────────────────────────  ⇄ Shift ←/→ ───────│
-│  [IDEs] ● cursor  ○ copilot  ○ cline  ○ windsurf  ○ roo        │
-│  [CLIs] ● claude-code  ○ codex  ○ aider  ● ollama (local)      │
-│  project: git · node · typescript · react · vitest            │
-│  [AUTOMATION & LOG STREAM] …                                  │
-│  ◆ qwen2.5-coder │ Autonomy: manual │ Thinking: medium        │
+│  ◤ PEREZDEV HUB  v0.2.0     [1 Chat]  2 Skills  3 MCP   ● llama3 │
+│                                                              │
+│  Ask anything about this repo.                               │
+│  Shift+← / Shift+→  Skills and MCP ·  ?  keys                │
+│                                                              │
+│ › ask or /command                                            │
+│   NORMAL · manual · med · ?                                  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Launching `perezdev` plays a short animated intro (logo + boot checklist + a
-quick-start card). It **waits on the quick-start card** — read it, then press
-`↵ Enter` to enter the hub (any key works).
+Launching `perezdev` shows a short logo, then the hub. Press `↵` (or any key) to enter. The intro uses an alternate screen so it does not stay in scrollback.
 
 Command: `perezdev` (aliases `pdh`, `inspo`).
 
@@ -56,15 +54,15 @@ Just run it:
 perezdev
 ```
 
-This opens the fullscreen TUI. The header badges are **live** — they reflect the AI tools actually configured on your machine and the stack of the current project. You drive everything by typing; there's no menu to arrow through.
+This opens the fullscreen TUI. Chat is the home page: type a prompt. Switch pages with **`Shift+←` / `Shift+→`**. Detected tools show on Skills and MCP, not as a catalog of empty circles on Chat. `Esc` returns to chat.
 
-Three pages, switched with **`Shift+←` / `Shift+→`** (or the digits `1`–`3` off the chat page; the legacy `F1`–`F3` keys still work). `Esc` returns to chat:
+Three pages:
 
 | Page | What it does |
 | --- | --- |
-| **`1` 🤖 Chat Engine** | Prompt your local/cloud model; ecosystem map + log stream. |
-| **`2` ⚙ Skill Builder** | *Create Custom Agent* (goal → LLM-generated skill), *Run Workspace Diagnoser*, *View Project Skills*. |
-| **`3` 🔌 MCP Manager** | Industry MCP directory with live status, a discovery scanner, and a custom integration prompt that compiles `mcpServers` JSON. |
+| **Chat** | Talk to your local/cloud model. |
+| **Skills** | Describe an agent → generate and install skill files. |
+| **MCP** | Install MCP servers for this repo. |
 
 In **Manual** autonomy any action that writes files pops an inline `[Y] Approve / [N] Cancel` dialog on the current page. Toggle to **Autonomous** to skip it.
 
@@ -72,8 +70,8 @@ In **Manual** autonomy any action that writes files pops an inline `[Y] Approve 
 
 | Key | Action |
 | --- | --- |
-| `Shift+←` / `Shift+→` | Previous / next page (wraps) |
-| `1` / `2` / `3` | Jump to a page (digits work off the chat page; `F1`–`F3` still work) |
+| `Shift+←` / `Shift+→` | Previous / next page (works while typing) |
+| `F1` / `F2` / `F3` | Same pages (legacy) |
 | `Shift+Tab` | Normal ↔ Planning mode (routes to a reasoning model) |
 | `Ctrl+A` | Manual ↔ Autonomous |
 | `Ctrl+T` | Thinking depth (low / medium / high) |
