@@ -2,6 +2,7 @@ import { z } from "zod";
 import { agentSpecSchema, mcpDependencySchema, slugSchema } from "./agent-spec.js";
 import type { LockEntry, McpEntry } from "./lockfile.js";
 import type { RegistryMcpServer } from "../registry/index.js";
+import { assertSafeMcpLaunch } from "./mcp-allow.js";
 
 const profileMcpSchema = z.object({
   // Slug-constrained: this id becomes a lockfile key and feeds install, so an
@@ -48,6 +49,14 @@ export function parseProfile(text: string): Profile {
     }
     const first = result.error.issues[0];
     throw new Error(`invalid profile: ${first ? `${first.path.join(".") || "root"} — ${first.message}` : "schema mismatch"}`);
+  }
+  for (const entry of result.data.mcp) {
+    assertSafeMcpLaunch(entry.dependency.command, entry.dependency.args);
+  }
+  for (const spec of result.data.agents) {
+    for (const dep of spec.mcpDependencies) {
+      assertSafeMcpLaunch(dep.command, dep.args);
+    }
   }
   return result.data;
 }

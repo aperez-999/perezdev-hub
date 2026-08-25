@@ -45,6 +45,18 @@ describe("install allowlist", () => {
     expect("reason" in parseInstallCommand("pip install $(whoami)")).toBe(true);
     expect("reason" in parseInstallCommand("npm install pkg && rm -rf .")).toBe(true);
   });
+  it("refuses global installs, prefixes, and URL/git specs", () => {
+    for (const c of [
+      "npm install -g evil",
+      "npm i --global left-pad",
+      "pip install --prefix /tmp/x requests",
+      "npm install git+https://github.com/x/y.git",
+      "pip install https://evil.example/x.whl",
+    ]) {
+      const r = parseInstallCommand(c);
+      expect("reason" in r, c).toBe(true);
+    }
+  });
   it("blocks a non-allowlisted command at runtime", async () => {
     const r = await runInstall("git push origin main");
     expect(r.blocked).toBeTruthy();

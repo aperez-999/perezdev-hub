@@ -5,6 +5,7 @@ import { mergeMcpJson, pruneMcpJson } from "../adapters/shared.js";
 import { atomicWriteValidated, cacheBackup, readIfExists, validateJson, withRollback } from "../util/fs-safe.js";
 import { getMcpEntry, listMcpEntries, removeMcpEntry, upsertMcpEntry } from "./lockfile.js";
 import type { RegistryMcpServer } from "../registry/index.js";
+import { assertSafeMcpLaunch } from "./mcp-allow.js";
 
 /** Confirm a server id actually landed under `mcpServers` in the written config. */
 async function verifyMcpWritten(path: string, id: string): Promise<void> {
@@ -23,6 +24,7 @@ async function verifyMcpWritten(path: string, id: string): Promise<void> {
 
 /** Convert a catalog MCP server into the MCP dependency form tools store. */
 export function toDependency(server: RegistryMcpServer): McpDependency {
+  assertSafeMcpLaunch(server.command, server.args);
   return { name: server.id, command: server.command, args: server.args, env: server.env ?? {} };
 }
 

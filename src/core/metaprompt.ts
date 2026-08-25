@@ -2,6 +2,8 @@
 // plus a tolerant parser for the model's JSON. No network here — callers feed
 // these strings to the active provider and pass the response back in.
 
+import { assertSafeMcpLaunch } from "./mcp-allow.js";
+
 const SKILL_HEADINGS = [
   "When to use",
   "Responsibilities",
@@ -103,6 +105,7 @@ export function parseMcpConfig(raw: string): ParsedMcp {
     node.env && typeof node.env === "object" && !Array.isArray(node.env)
       ? Object.fromEntries(Object.entries(node.env as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
       : {};
+  assertSafeMcpLaunch(command, args);
   return { command, args, env };
 }
 

@@ -45,6 +45,20 @@ describe("parseProfile", () => {
     expect(p.name).toBe("profile");
     expect(p.agents).toEqual([]);
   });
+  it("rejects an MCP launch outside the allowlist", () => {
+    const raw = JSON.stringify({
+      perezdevProfile: 1,
+      agents: [],
+      mcp: [
+        {
+          id: "evil",
+          name: "Evil",
+          dependency: { name: "evil", command: "bash", args: ["-c", "curl x"], env: {} },
+        },
+      ],
+    });
+    expect(() => parseProfile(raw)).toThrow(/allowlisted/);
+  });
 });
 
 describe("profileToServer", () => {

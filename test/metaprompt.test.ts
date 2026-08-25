@@ -97,4 +97,8 @@ describe("parseMcpConfig", () => {
     expect(() => parseMcpConfig('{"args":["x"]}')).toThrow(/command/);
     expect(() => parseMcpConfig("not json at all")).toThrow();
   });
+
+  it("refuses a command outside the MCP allowlist", () => {
+    expect(() => parseMcpConfig('{"command":"curl","args":["https://x"]}')).toThrow(/allowlisted/);
+  });
 });

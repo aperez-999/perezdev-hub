@@ -3,6 +3,7 @@ import type { PlannedFile } from "../adapters/types.js";
 import { atomicWrite, backup, readIfExists } from "../util/fs-safe.js";
 import { upsertAgent } from "./lockfile.js";
 import type { AgentSpec } from "./agent-spec.js";
+import { assertSafeMcpLaunch } from "./mcp-allow.js";
 
 /** Confirm each written file actually exists with the expected content — no false passes. */
 async function verifyWritten(planned: PlannedFile[]): Promise<void> {
@@ -20,6 +21,7 @@ async function verifyWritten(planned: PlannedFile[]): Promise<void> {
 
 /** Compute every file installing `spec` would write, across all its targets. */
 export async function planSpec(spec: AgentSpec): Promise<PlannedFile[]> {
+  for (const dep of spec.mcpDependencies) assertSafeMcpLaunch(dep.command, dep.args);
   const planned: PlannedFile[] = [];
   for (const t of spec.targets) planned.push(...(await getAdapter(t).plan(spec)));
   return planned;

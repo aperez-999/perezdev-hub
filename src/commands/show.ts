@@ -1,6 +1,7 @@
 import pc from "picocolors";
 import { getAgentSpec, getMcpEntry } from "../core/lockfile.js";
 import { getAdapter } from "../adapters/registry.js";
+import { redactEnv } from "../core/mcp-allow.js";
 
 export interface ShowOptions {
   json?: boolean;
@@ -18,7 +19,8 @@ export async function runShow(name: string, opts: ShowOptions = {}): Promise<voi
     );
 
     if (opts.json) {
-      console.log(JSON.stringify({ kind: "agent", ...spec, files }, null, 2));
+      const mcpDependencies = spec.mcpDependencies.map((m) => ({ ...m, env: redactEnv(m.env) }));
+      console.log(JSON.stringify({ kind: "agent", ...spec, mcpDependencies, files }, null, 2));
       return;
     }
 
@@ -52,7 +54,8 @@ export async function runShow(name: string, opts: ShowOptions = {}): Promise<voi
   const mcp = await getMcpEntry(name);
   if (mcp) {
     if (opts.json) {
-      console.log(JSON.stringify({ kind: "mcp", ...mcp }, null, 2));
+      const dependency = { ...mcp.dependency, env: redactEnv(mcp.dependency.env) };
+      console.log(JSON.stringify({ kind: "mcp", ...mcp, dependency }, null, 2));
       return;
     }
     const line = (k: string, v: string) => `  ${pc.dim(k.padEnd(12))} ${v}`;

@@ -23,6 +23,7 @@ import {
 } from "./data.js";
 import { slugSchema, type ToolId } from "../core/agent-spec.js";
 import { skillMetaprompt, mcpMetaprompt, parseMcpConfig, looksLikeSkillMarkdown } from "../core/metaprompt.js";
+import { redactEnv } from "../core/mcp-allow.js";
 import { slugify } from "../core/slug.js";
 import type { Provider } from "../core/provider.js";
 import { loadRc, saveRc, type PerezRc } from "../core/rc.js";
@@ -377,9 +378,9 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
   async function guard(
     desc: string,
     run: () => Promise<string>,
-    opts: { ignore?: string[]; diff?: string[] } = {},
+    opts: { ignore?: string[]; diff?: string[]; sensitive?: boolean } = {},
   ): Promise<void> {
-    if (autonomy === "auto") {
+    if (autonomy === "auto" && !opts.sensitive) {
       await execute(run);
     } else {
       setConfirm({ desc, run, ignore: opts.ignore, diff: opts.diff });
@@ -409,8 +410,8 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
     }
   }
 
-  function confirmAsync(desc: string): Promise<boolean> {
-    if (autonomy === "auto") return Promise.resolve(true);
+  function confirmAsync(desc: string, kind: "install" | "patch" = "patch"): Promise<boolean> {
+    if (autonomy === "auto" && kind !== "install") return Promise.resolve(true);
     return new Promise((resolve) => setConfirm({ desc, resolve }));
   }
 
@@ -548,7 +549,11 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
     }
     setBusy(false);
     const id = slugify(req);
-    const json = JSON.stringify({ [id]: { command: parsed.command, args: parsed.args, env: parsed.env } }, null, 2);
+    const json = JSON.stringify(
+      { [id]: { command: parsed.command, args: parsed.args, env: redactEnv(parsed.env) } },
+      null,
+      2,
+    );
     setPanel({ kind: "json", id, text: json });
     push("ok", `${id}: ${parsed.command} ${parsed.args.join(" ")}`, "mcp");
     return guard(
@@ -559,6 +564,7 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
         reportInstall(`injected mcp ${id} into ${paths.length} config(s)`, paths, "mcp");
         return "";
       },
+      { sensitive: true },
     );
   }
 

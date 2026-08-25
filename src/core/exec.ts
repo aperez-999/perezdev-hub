@@ -70,6 +70,13 @@ export function parseInstallCommand(command: string): { argv: string[] } | { rea
   if (!sub || !allowed.has(sub)) return { reason: `refused: '${bin} ${sub ?? ""}' is not an allowed install subcommand` };
   for (const arg of argv.slice(2)) {
     if (!SAFE_INSTALL_ARG.test(arg)) return { reason: `refused: unsafe argument '${arg}'` };
+    const lower = arg.toLowerCase();
+    if (arg === "-g" || arg === "--global" || arg === "--prefix" || arg.startsWith("--prefix=")) {
+      return { reason: `refused: global/prefix install is not allowed ('${arg}')` };
+    }
+    if (lower.includes("git+") || lower.includes("://")) {
+      return { reason: `refused: URL / git specs are not allowed ('${arg}')` };
+    }
   }
   return { argv };
 }
