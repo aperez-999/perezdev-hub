@@ -2,37 +2,35 @@ import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { theme } from "../theme.js";
-import { loadNews, type NewsItem } from "../../core/news.js";
+import { loadNews, type NewsItem, type NewsResult } from "../../core/news.js";
 
 /** Page 4 — live headlines about MCP, skills, models, and languages. */
 export function NewsPage({ sel }: { sel: number }): React.ReactElement {
-  const [items, setItems] = useState<NewsItem[] | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [result, setResult] = useState<NewsResult | null>(null);
 
   useEffect(() => {
     let alive = true;
     void loadNews()
-      .then((list) => {
+      .then((r) => {
         if (!alive) return;
-        setItems(list);
+        setResult(r);
       })
-      .catch((e) => {
+      .catch(() => {
         if (!alive) return;
-        setErr(e instanceof Error ? e.message : String(e));
-        setItems([]);
+        setResult({ items: [], live: false });
       });
     return () => {
       alive = false;
     };
   }, []);
 
-  const list = items ?? [];
+  const list: NewsItem[] = result?.items ?? [];
   const idx = list.length ? ((sel % list.length) + list.length) % list.length : 0;
 
   return (
     <Box flexDirection="column" flexGrow={1} marginTop={1}>
       <Text color={theme.dim}>AI tooling feed</Text>
-      {items === null && (
+      {result === null && (
         <Box marginTop={1}>
           <Text color={theme.accent}>
             <Spinner type="dots" />
@@ -40,9 +38,10 @@ export function NewsPage({ sel }: { sel: number }): React.ReactElement {
           <Text color={theme.fg2}> fetching headlines…</Text>
         </Box>
       )}
-      {items && list.length === 0 && (
-        <Text color={theme.muted}>{err ?? "No headlines (offline or nothing matched)."}</Text>
+      {result && !result.live && list.length > 0 && (
+        <Text color={theme.dim}>cached digest · live HN unavailable</Text>
       )}
+      {result && list.length === 0 && <Text color={theme.muted}>No headlines.</Text>}
       {list.map((it, i) => {
         const on = i === idx;
         return (
@@ -50,7 +49,7 @@ export function NewsPage({ sel }: { sel: number }): React.ReactElement {
             <Box width={2} flexShrink={0}>
               <Text color={on ? theme.accent : theme.faint}>{on ? "›" : " "}</Text>
             </Box>
-            <Box width={6} flexShrink={0}>
+            <Box width={8} flexShrink={0}>
               <Text color={theme.dim}>{it.source}</Text>
             </Box>
             <Text color={on ? theme.accent : theme.fg} wrap="truncate-end">
