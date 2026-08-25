@@ -1,13 +1,63 @@
 import { describe, it, expect } from "vitest";
-import { skillMetaprompt, mcpMetaprompt, parseMcpConfig } from "../src/core/metaprompt.js";
+import {
+  skillMetaprompt,
+  mcpMetaprompt,
+  parseMcpConfig,
+  looksLikeSkillMarkdown,
+  formatScanContext,
+} from "../src/core/metaprompt.js";
 
 describe("skillMetaprompt", () => {
-  it("embeds the goal and the required section headings", () => {
+  it("embeds the goal, scan stack, and template headings", () => {
+    const p = skillMetaprompt("backend developer who fixes bugs", {
+      languages: ["typescript"],
+      frameworks: ["express"],
+      testFrameworks: ["vitest"],
+    });
+    expect(p).toContain('"backend developer who fixes bugs"');
+    expect(p).toContain("typescript, express, vitest");
+    expect(p).toContain("## When to use");
+    expect(p).toContain("## Definition of done");
+    expect(p).toContain("## Guardrails");
+    expect(p).not.toContain("Role Definition");
+    expect(p).toMatch(/Log4j/);
+  });
+
+  it("stays generic when there is no scan", () => {
     const p = skillMetaprompt("embedded rust engineer");
-    expect(p).toContain('"embedded rust engineer"');
-    expect(p).toContain("# Role Definition & Scope");
-    expect(p).toContain("# Target Definitions of Done");
-    expect(p).toMatch(/ONLY the raw markdown/i);
+    expect(p).toContain("Do not invent a stack");
+  });
+});
+
+describe("looksLikeSkillMarkdown", () => {
+  it("accepts template-shaped bodies and rejects chat filler", () => {
+    const body = [
+      "You are a backend specialist.",
+      "",
+      "## When to use",
+      "",
+      "Use this for API bugs.",
+      "",
+      "## Workflow",
+      "",
+      "1. Reproduce.",
+      "",
+      "## Guardrails",
+      "",
+      "Stay in scope.",
+      "x".repeat(120),
+    ].join("\n");
+    expect(looksLikeSkillMarkdown(body)).toBe(true);
+    expect(looksLikeSkillMarkdown("Sure! Here is a skill.")).toBe(false);
+    expect(looksLikeSkillMarkdown("# Role Definition & Scope\n\n" + "y".repeat(200))).toBe(false);
+  });
+});
+
+describe("formatScanContext", () => {
+  it("dedupes languages and frameworks", () => {
+    expect(formatScanContext({ languages: ["typescript", "typescript"], frameworks: ["react"] })).toBe(
+      "typescript, react",
+    );
   });
 });
 

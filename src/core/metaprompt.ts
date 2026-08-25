@@ -2,19 +2,59 @@
 // plus a tolerant parser for the model's JSON. No network here — callers feed
 // these strings to the active provider and pass the response back in.
 
-/** Blueprint that asks the model for a full skill / system-instruction body. */
-export function skillMetaprompt(goal: string): string {
+const SKILL_HEADINGS = [
+  "When to use",
+  "Responsibilities",
+  "Workflow",
+  "Guidelines",
+  "Definition of done",
+  "Output",
+  "Guardrails",
+] as const;
+
+export interface ScanBits {
+  languages?: string[];
+  frameworks?: string[];
+  testFrameworks?: string[];
+}
+
+/** Compact stack line for the skill metaprompt (languages / frameworks / tests). */
+export function formatScanContext(scan?: ScanBits): string {
+  if (!scan) return "";
+  const bits = [...(scan.languages ?? []), ...(scan.frameworks ?? []), ...(scan.testFrameworks ?? [])]
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [...new Set(bits)].join(", ");
+}
+
+/** True when the model returned hub-shaped skill markdown, not chat filler. */
+export function looksLikeSkillMarkdown(raw: string): boolean {
+  const text = raw.trim();
+  if (text.length < 180) return false;
+  let hits = 0;
+  for (const h of SKILL_HEADINGS) {
+    if (new RegExp(`^#{1,3}\\s+${h}\\s*$`, "im").test(text)) hits += 1;
+  }
+  return hits >= 3;
+}
+
+/** Blueprint that asks the model for a skill body matching `templateInstructions`. */
+export function skillMetaprompt(goal: string, scan?: ScanBits | string): string {
+  const stack = typeof scan === "string" ? scan.trim() : formatScanContext(scan);
+  const stackBlock = stack
+    ? `This repository uses: ${stack}. Write for that stack only. Do not invent other languages, frameworks, or test libraries (no Log4j, JUnit, pytest, Django, etc.) unless they appear in the scan or the goal.`
+    : "Do not invent a stack. Stay generic unless the goal names one.";
+
   return [
-    "You are an expert developer workflow architect. Generate an elite development skill and",
-    `system instruction manual based on the following target user requirement: "${goal}".`,
+    "You write agent skill files for PerezDev Hub.",
+    `Goal: "${goal}".`,
+    stackBlock,
     "",
-    "Structure your output strictly using clean Markdown sections with the following format:",
-    "# Role Definition & Scope",
-    "# Key Technical Responsibilities",
-    "# Required Project Coding Guidelines & Guardrails",
-    "# Target Definitions of Done",
+    "Start with one sentence: You are <role>. Then a one-line job statement.",
+    "Output ONLY markdown with exactly these ## headings, in this order:",
+    ...SKILL_HEADINGS.map((h) => `## ${h}`),
     "",
-    "Output ONLY the raw markdown text body. Do not include chat commentary or conversational wrappers.",
+    "Be specific to the goal. No chat commentary, no code fences around the whole file.",
   ].join("\n");
 }
 

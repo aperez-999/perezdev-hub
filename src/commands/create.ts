@@ -1,5 +1,6 @@
 import pc from "picocolors";
 import { slugSchema, TOOL_IDS, type McpDependency, type ToolId } from "../core/agent-spec.js";
+import { slugify } from "../core/slug.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
 import { getPreset } from "../core/presets.js";
 import { hasAnthropicKey } from "../core/config.js";
@@ -96,15 +97,17 @@ async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promi
   }
 
   // 2. Flags supply name + purpose → quick, no prompts (defaults for the rest).
-  if (opts.name && opts.purpose) {
-    const r = slugSchema.safeParse(opts.name);
+  // Purpose-only uses the same stopword slug as the Skills page.
+  const named = opts.name || (opts.purpose ? slugify(opts.purpose) : undefined);
+  if (named && opts.purpose) {
+    const r = slugSchema.safeParse(named);
     if (!r.success) {
       p.cancel(`Invalid --name: ${r.error.issues[0]?.message}`);
       process.exit(1);
     }
     return {
-      name: opts.name,
-      role: opts.role ?? deriveRole(opts.name),
+      name: named,
+      role: opts.role ?? deriveRole(named),
       description: opts.purpose,
       behaviors: [],
       allowedTools: [],
