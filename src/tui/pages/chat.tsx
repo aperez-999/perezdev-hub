@@ -3,7 +3,7 @@ import { Box, Text, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Row, type LogLine, type Mode } from "../components.js";
+import { Row, type Autonomy, type LogLine, type Mode } from "../components.js";
 import { SlashMenu } from "../slash.js";
 import { OFFLINE_HINT, PROMPT_PLACEHOLDER } from "../copy.js";
 import { EmptyChat } from "../empty-chat.js";
@@ -15,6 +15,8 @@ export function ChatPage({
   partial,
   mode,
   online,
+  autonomy,
+  agentLabel,
   input,
   setInput,
   submit,
@@ -27,6 +29,8 @@ export function ChatPage({
   partial: string;
   mode: Mode;
   online: boolean;
+  autonomy: Autonomy;
+  agentLabel: string;
   input: string;
   setInput: (s: string) => void;
   submit: (s: string) => void;
@@ -45,14 +49,19 @@ export function ChatPage({
       <Box flexDirection="column" flexGrow={1} marginTop={1}>
         {empty && <EmptyChat />}
         {recent.map((l, i) => (
-          <Row key={i} line={l} />
+          <Row key={i} line={l} agentLabel={agentLabel} />
         ))}
         {busy && (
-          <Box>
-            <Text color={theme.accent}>
-              <Spinner type="dots" />
+          <Box flexDirection="column" marginTop={1}>
+            <Text color={theme.accent} bold>
+              {agentLabel}
             </Text>
-            <Text color={theme.fg2}>{" " + (partial.slice(-240) || "working…")}</Text>
+            <Box>
+              <Text color={theme.accent}>
+                <Spinner type="dots" />
+              </Text>
+              <Text color={theme.fg2}>{" " + (partial.slice(-240) || "working…")}</Text>
+            </Box>
           </Box>
         )}
       </Box>
@@ -69,13 +78,18 @@ export function ChatPage({
 
       <Box marginTop={1} borderStyle="round" borderColor={focused ? theme.accent : theme.line} paddingX={1}>
         <Text color={mode === "plan" ? theme.violet : theme.accent}>{mode === "plan" ? "plan › " : "› "}</Text>
-        <TextInput
-          value={input}
-          onChange={setInput}
-          onSubmit={submit}
-          focus={inputActive}
-          placeholder={PROMPT_PLACEHOLDER}
-        />
+        <Box flexGrow={1}>
+          <TextInput
+            value={input}
+            onChange={setInput}
+            onSubmit={submit}
+            focus={inputActive}
+            placeholder={PROMPT_PLACEHOLDER}
+          />
+        </Box>
+        <Text color={autonomy === "auto" ? theme.ok : theme.muted} bold={autonomy === "auto"}>
+          {autonomy === "auto" ? " AUTO" : " manual"}
+        </Text>
       </Box>
     </Box>
   );

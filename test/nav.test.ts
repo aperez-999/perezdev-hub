@@ -7,7 +7,8 @@ describe("navFromData", () => {
     expect(navFromData("\x1bOQ")).toEqual({ page: 2 });
     expect(navFromData("\x1bOR")).toEqual({ page: 3 });
     expect(navFromData("\x1b[11~")).toEqual({ page: 1 });
-    expect(navFromData("\x1b[[C")).toEqual({ page: 3 });
+    expect(navFromData("\x1bOS")).toEqual({ page: 4 });
+    expect(navFromData("\x1b[14~")).toEqual({ page: 4 });
   });
 
   it("maps Shift+arrows to cycle intents", () => {
@@ -23,9 +24,9 @@ describe("navFromData", () => {
 
 describe("nextPage", () => {
   it("wraps at both ends", () => {
-    expect(nextPage(1, -1)).toBe(3);
-    expect(nextPage(3, 1)).toBe(1);
-    expect(nextPage(1, 1)).toBe(2);
+    expect(nextPage(1, -1)).toBe(4);
+    expect(nextPage(4, 1)).toBe(1);
+    expect(nextPage(3, 1)).toBe(4);
   });
 });
 

@@ -40,6 +40,14 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
     tags: ["git", "github", "api"],
   },
   {
+    id: "gitlab",
+    name: "GitLab",
+    description: "Issues, MRs, and projects via the GitLab API.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-gitlab"],
+    tags: ["git", "gitlab", "api"],
+  },
+  {
     id: "postgres",
     name: "Postgres",
     description: "Query a PostgreSQL database (read-only by default).",
@@ -62,6 +70,14 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-fetch"],
     tags: ["web", "http"],
+  },
+  {
+    id: "sequential-thinking",
+    name: "Sequential Thinking",
+    description: "Structured multi-step reasoning for harder tasks.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+    tags: ["reason", "core"],
   },
   {
     id: "memory",
@@ -94,5 +110,21 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-puppeteer"],
     tags: ["web", "automation"],
+  },
+  {
+    id: "redis",
+    name: "Redis",
+    description: "Query and inspect a Redis instance.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-redis"],
+    tags: ["database", "cache"],
+  },
+  {
+    id: "sentry",
+    name: "Sentry",
+    description: "Read Sentry issues and error context.",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-sentry"],
+    tags: ["observability", "errors"],
   },
 ];

@@ -21,7 +21,9 @@ export function StatusBar({ mode, autonomy, thinking }: StatusProps): React.Reac
         {mode === "plan" ? "PLANNING" : "NORMAL"}
       </Text>
       <Text color={theme.muted}>{" · "}</Text>
-      <Text color={autonomy === "auto" ? theme.ok : theme.fg2}>{autonomy}</Text>
+      <Text color={autonomy === "auto" ? theme.ok : theme.fg2} bold={autonomy === "auto"}>
+        {autonomy === "auto" ? "AUTO" : "manual"}
+      </Text>
       <Text color={theme.muted}>{" · "}</Text>
       <Text color={theme.fg2}>{think}</Text>
       <Text color={theme.dim}>{" · ?"}</Text>

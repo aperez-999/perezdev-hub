@@ -1,7 +1,7 @@
 /** Canonical TUI copy — one home so chat, confirm, and help cannot drift. */
 
 export const EMPTY_CHAT = "Ask anything about this repo.";
-export const EMPTY_CHAT_HINT = "Shift+← / Shift+→  Skills and MCP ·  ?  keys";
+export const EMPTY_CHAT_HINT = "Shift+← / →  pages ·  Ctrl+A  local auto ·  ?  keys";
 export const PROMPT_PLACEHOLDER = "ask or /command";
 export const CONFIRM_TITLE = "Write these files?";
 export const OFFLINE_HINT =

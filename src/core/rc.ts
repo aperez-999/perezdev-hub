@@ -5,7 +5,7 @@ import { atomicWriteValidated, readIfExists, validateJson } from "../util/fs-saf
 
 export interface PerezRc {
   /** Tab the user was last on (1 chat · 2 skill builder · 3 mcp manager). */
-  last_active_tab: 1 | 2 | 3;
+  last_active_tab: 1 | 2 | 3 | 4;
   /** Execution layout left active. */
   autonomy_mode: "manual" | "auto";
   /** MCP servers the user declined during discovery — don't re-prompt. */
@@ -33,7 +33,7 @@ export async function loadRc(): Promise<PerezRc> {
       ? obj.default_targets.filter((t): t is ToolId => (TOOL_IDS as readonly string[]).includes(t))
       : [];
     return {
-      last_active_tab: obj.last_active_tab === 2 || obj.last_active_tab === 3 ? obj.last_active_tab : 1,
+  last_active_tab: obj.last_active_tab === 2 || obj.last_active_tab === 3 || obj.last_active_tab === 4 ? obj.last_active_tab : 1,
       autonomy_mode: obj.autonomy_mode === "auto" ? "auto" : "manual",
       mcp_ignored_servers: Array.isArray(obj.mcp_ignored_servers) ? obj.mcp_ignored_servers.map(String) : [],
       ...(validTargets.length ? { default_targets: validTargets } : {}),

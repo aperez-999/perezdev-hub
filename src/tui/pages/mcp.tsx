@@ -5,9 +5,27 @@ import TextInput from "ink-text-input";
 import { theme, MCP_PANEL_W } from "../theme.js";
 import { Row, type LogLine } from "../components.js";
 import { MCP_CUSTOM_PLACEHOLDER, MCP_DISCOVER } from "../copy.js";
+import { MCP_SERVERS } from "../../registry/mcp-servers.js";
 import type { HomeData } from "../data.js";
 
 export type McpFocus = "list" | "button" | "input";
+
+const TITLES: Record<string, string> = {
+  filesystem: "Local Filesystem",
+  sqlite: "SQLite Database",
+  postgres: "PostgreSQL Database",
+  "brave-search": "Web Browser Search",
+  docker: "Docker Environment",
+  puppeteer: "Puppeteer Automation",
+  memory: "Memory Context",
+  github: "GitHub",
+  git: "Git",
+  fetch: "HTTP Fetch",
+  gitlab: "GitLab",
+  redis: "Redis",
+  sentry: "Sentry",
+  "sequential-thinking": "Sequential Thinking",
+};
 
 export interface DirectoryItem {
   label: string;
@@ -15,16 +33,12 @@ export interface DirectoryItem {
   tag: string;
 }
 
-export const MCP_DIRECTORY: DirectoryItem[] = [
-  { label: "Local Filesystem", id: "filesystem", tag: "files" },
-  { label: "SQLite Database", id: "sqlite", tag: "db" },
-  { label: "PostgreSQL Database", id: "postgres", tag: "db" },
-  { label: "Web Browser Search", id: "brave-search", tag: "web" },
-  { label: "Docker Environment", id: "docker", tag: "infra" },
-  { label: "Puppeteer Automation", id: "puppeteer", tag: "e2e" },
-  { label: "Memory Context", id: "memory", tag: "ctx" },
-  { label: "GitHub / Atlassian", id: "github", tag: "git" },
-];
+/** Same catalog the CLI installs — one list so the TUI cannot drift. */
+export const MCP_DIRECTORY: DirectoryItem[] = MCP_SERVERS.map((s) => ({
+  id: s.id,
+  label: TITLES[s.id] ?? s.name,
+  tag: s.tags[0] ?? "mcp",
+}));
 
 export type McpPanel =
   | { kind: "empty" }
@@ -70,7 +84,7 @@ export function McpPage({
                   <Text color={on ? theme.accent : theme.faint}>{on ? "›" : " "}</Text>
                 </Box>
                 <Text color={reg ? theme.ok : theme.faint}>{reg ? "● " : "○ "}</Text>
-                <Box width={22} flexShrink={0}>
+                <Box width={28} flexShrink={0}>
                   <Text color={on ? theme.accent : reg ? theme.fg : theme.fg2} bold={on}>
                     {it.label}
                   </Text>

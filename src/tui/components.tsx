@@ -33,27 +33,44 @@ export function SectionHeader({
   );
 }
 
-const GLYPH: Record<LogKind, [string, string]> = {
-  user: ["you", theme.violet],
-  ai: ["  ", theme.fg],
+const GLYPH: Record<"ok" | "err" | "info", [string, string]> = {
   ok: ["✔", theme.ok],
   err: ["✘", theme.bad],
   info: ["●", theme.accent],
 };
 
-/** One styled, category-aware log line in the automation stream. */
-export function Row({ line }: { line: LogLine }): React.ReactElement {
-  const [glyph, color] = GLYPH[line.kind];
-  const bodyColor = line.kind === "user" ? theme.fg : line.kind === "ai" ? theme.fg : theme.fg2;
-  const labelW = line.kind === "user" ? 4 : 2;
-  return (
-    <Box>
-      <Box width={labelW} flexShrink={0}>
-        <Text color={color} bold={line.kind === "user"}>
-          {glyph}
+export function Row({ line, agentLabel }: { line: LogLine; agentLabel?: string }): React.ReactElement {
+  if (line.kind === "user") {
+    return (
+      <Box flexDirection="column" marginTop={1}>
+        <Text color={theme.violet} bold>
+          you
+        </Text>
+        <Text color={theme.fg} wrap="wrap">
+          {line.text}
         </Text>
       </Box>
-      <Text color={bodyColor} wrap="wrap">
+    );
+  }
+  if (line.kind === "ai") {
+    return (
+      <Box flexDirection="column" marginTop={1}>
+        <Text color={theme.accent} bold>
+          {agentLabel || "model"}
+        </Text>
+        <Text color={theme.fg} wrap="wrap">
+          {line.text}
+        </Text>
+      </Box>
+    );
+  }
+  const [glyph, color] = GLYPH[line.kind];
+  return (
+    <Box>
+      <Box width={2} flexShrink={0}>
+        <Text color={color}>{glyph}</Text>
+      </Box>
+      <Text color={theme.fg2} wrap="wrap">
         {line.text}
       </Text>
     </Box>

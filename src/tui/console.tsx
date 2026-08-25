@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useApp, useInput, useStdin } from "ink";
 import { Engine } from "../engine/bridge.js";
-import { detectOllama, promptModel, THINKING_SYSTEM, type OllamaStatus } from "../core/ollama.js";
+import { detectOllama, promptModel, warmupModel, AUTO_CHAT_SYSTEM, CHAT_SYSTEM, THINKING_SYSTEM, type OllamaBudget, type OllamaStatus } from "../core/ollama.js";
 import { resolveProvider, providerHint } from "../core/provider.js";
 import { promptAnthropic, promptOpenAI } from "../core/cloud.js";
 import { readIfExists, applyEdits, cacheBackup, atomicWriteValidated, withRollback } from "../util/fs-safe.js";
@@ -42,8 +42,11 @@ import { helpLines, filterCommands } from "./commands.js";
 import { ChatPage } from "./pages/chat.js";
 import { FactoryPage, type FactoryFocus, type ToolChip } from "./pages/factory.js";
 import { McpPage, MCP_DIRECTORY, type McpFocus, type McpPanel } from "./pages/mcp.js";
+import { NewsPage } from "./pages/news.js";
 import { isBareHelpInput, navFromData, nextPage } from "./nav.js";
 import { ModelPicker } from "./model-picker.js";
+import { throttleAppend } from "../util/throttle.js";
+import { parseLocalIntent } from "./local-intent.js";
 
 /** The whole UI: tabbed console (Chat · Skill Builder · MCP). */
 export function Console(): React.ReactElement {
@@ -80,6 +83,7 @@ export function Console(): React.ReactElement {
   const [focus3, setFocus3] = useState<McpFocus>("list");
   const [mcpInput, setMcpInput] = useState("");
   const [panel, setPanel] = useState<McpPanel>({ kind: "empty" });
+  const [sel4, setSel4] = useState(0);
 
   const rcLoaded = useRef(false);
   const prefsRef = useRef<{ default_targets?: PerezRc["default_targets"]; default_provider?: PerezRc["default_provider"] }>({});
@@ -151,12 +155,20 @@ export function Console(): React.ReactElement {
       ? { kind: "local", model: pinnedModel, label: pinnedModel, status: "ollama up" }
       : baseProvider;
   const online = !!provider && provider.kind !== "none";
+  const localModel = provider?.kind === "local" ? provider.model : null;
   const targets = home?.targets ?? [];
   const cloudLabel = baseProvider?.kind === "cloud" ? baseProvider.label : null;
   const routing = {
     normal: pinnedModel ?? status?.normal ?? cloudLabel ?? "—",
     planning: status?.thinking ?? status?.normal ?? cloudLabel ?? "—",
   };
+
+  // Keep the selected local model in Ollama RAM so the next prompt is not a cold load.
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!localModel || !engine) return;
+    void warmupModel(engine, localModel).catch(() => {});
+  }, [localModel]);
 
   function goto(p: Page): void {
     setHelp(false);
@@ -223,7 +235,7 @@ export function Console(): React.ReactElement {
       if (!typing) return setHelp(true);
     }
     // Digit nav works on any non-typing page (Chat is always typing → use Shift+←/→).
-    if (!typing && ch >= "1" && ch <= "3") return goto(Number(ch) as Page);
+    if (!typing && ch >= "1" && ch <= "4") return goto(Number(ch) as Page);
 
     // ── Page 1 (chat) ──
     if (page === 1) {
@@ -273,6 +285,12 @@ export function Console(): React.ReactElement {
       if (focus3 === "button" && (key.return || ch === "s")) return void discoverMcp();
       return;
     }
+
+    // ── Page 4 (News) ──
+    if (page === 4) {
+      if (key.upArrow) return setSel4((s) => s - 1);
+      if (key.downArrow) return setSel4((s) => s + 1);
+    }
   });
 
   // ── model picker ──
@@ -305,7 +323,7 @@ export function Console(): React.ReactElement {
   // ── Skill Builder helpers ──
   function toolChips(): ToolChip[] {
     const set = factoryTools ?? new Set<ToolId>();
-    return (home?.tools ?? []).map((t) => ({ id: t.id, label: t.name, on: set.has(t.id) }));
+    return (home?.tools ?? []).map((t) => ({ id: t.id, label: t.name, on: set.has(t.id), present: t.installed }));
   }
   function toggleTool(i: number): void {
     const chips = toolChips();
@@ -390,12 +408,19 @@ export function Console(): React.ReactElement {
     }
   }
 
-  async function callProvider(prompt: string, onToken?: (t: string) => void, system?: string): Promise<string> {
+  async function callProvider(
+    prompt: string,
+    onToken?: (t: string) => void,
+    system?: string,
+    budget: OllamaBudget = "chat",
+  ): Promise<string> {
     const p: Provider | null = provider;
     if (!p || p.kind === "none") {
       throw new Error(providerHint(p ?? { kind: "none", label: "", status: "", reason: "offline" }));
     }
-    if (p.kind === "local") return promptModel(engineRef.current!, p.model, prompt, { system, onToken });
+    if (p.kind === "local") {
+      return promptModel(engineRef.current!, p.model, prompt, { system, onToken, thinking, budget });
+    }
     if (p.vendor === "anthropic") return promptAnthropic(p.model, prompt, { system, onToken });
     return promptOpenAI(p.model, prompt, { system, onToken });
   }
@@ -411,9 +436,7 @@ export function Console(): React.ReactElement {
     const cat = opts.cat;
     // Stream tokens into the F2 preview pane when invoked from the builder,
     // otherwise into the chat partial line.
-    const onToken = opts.preview
-      ? (t: string) => setPreview((p) => p + t)
-      : (t: string) => setPartial((p) => p + t);
+    const stream = throttleAppend(opts.preview ? (t) => setPreview((p) => p + t) : (t) => setPartial((p) => p + t));
     let body: string | undefined;
     if (provider && provider.kind !== "none") {
       setBusy(true);
@@ -421,10 +444,11 @@ export function Console(): React.ReactElement {
       else setPartial("");
       push("info", "⠋ Querying active AI provider to generate custom skill instructions…", cat);
       try {
-        body = (await callProvider(skillMetaprompt(desc), onToken)).trim() || undefined;
+        body = (await callProvider(skillMetaprompt(desc), stream.push, undefined, "write")).trim() || undefined;
       } catch (e) {
         push("err", e instanceof Error ? e.message : String(e), cat);
       }
+      stream.flush();
       setBusy(false);
     }
     if (!body) push("info", "no model connected — wrote a template skill. Start Ollama or set a key for AI-generated.", cat);
@@ -478,14 +502,17 @@ export function Console(): React.ReactElement {
     if (!provider || provider.kind === "none") {
       return push("err", providerHint(provider ?? { kind: "none", label: "", status: "", reason: "offline" }), "mcp");
     }
+    const stream = throttleAppend((t) => setPartial((p) => p + t));
     setBusy(true);
     setPartial("");
     push("info", `⠋ Querying active AI provider to compile MCP config: ${req}`, "mcp");
     let parsed: { command: string; args: string[]; env: Record<string, string> };
     try {
-      const raw = await callProvider(mcpMetaprompt(req), (t) => setPartial((p) => p + t));
+      const raw = await callProvider(mcpMetaprompt(req), stream.push, undefined, "write");
+      stream.flush();
       parsed = parseMcpConfig(raw);
     } catch (e) {
+      stream.flush();
       setBusy(false);
       return push("err", e instanceof Error ? e.message : String(e), "mcp");
     }
@@ -546,6 +573,25 @@ export function Console(): React.ReactElement {
     if (!text || busy) return;
     if (text.startsWith("/")) return slash(text);
     push("user", text, "chat");
+    const intent = parseLocalIntent(text);
+    if (intent.kind === "auto") {
+      setAutonomy("auto");
+      push("ok", "local auto on — writes skip the Y/N gate. Ctrl+A toggles.", "chat");
+      return;
+    }
+    if (intent.kind === "mcp") {
+      const i = MCP_DIRECTORY.findIndex((d) => d.id === intent.id);
+      if (i >= 0) {
+        push("info", `installing ${MCP_DIRECTORY[i]!.label} into detected tools…`, "mcp");
+        installDirectory(i);
+        return;
+      }
+    }
+    if (intent.kind === "skills") {
+      push("info", "Skills installs into those tools. Shift+→, describe the agent, Generate.", "build");
+      if (autonomy === "auto") goto(2);
+      return;
+    }
     await runPrompt(text);
   }
 
@@ -554,6 +600,12 @@ export function Console(): React.ReactElement {
     const arg = rest.join(" ");
     if (cmd === "quit" || cmd === "exit") return exit();
     if (cmd === "clear") return setLog([]);
+    if (cmd === "auto") {
+      const next = autonomy === "manual" ? "auto" : "manual";
+      setAutonomy(next);
+      push("ok", `local auto → ${next === "auto" ? "on" : "off"} (Ctrl+A)`);
+      return;
+    }
     if (cmd === "help") {
       helpLines().forEach((l) => push("info", l));
       return;
@@ -739,7 +791,7 @@ export function Console(): React.ReactElement {
       const result = await runAutofix(
         { diagnosis: d, verifyCommand: verify },
         {
-          callProvider: (p) => callProvider(p),
+          callProvider: (p) => callProvider(p, undefined, undefined, "write"),
           exec: (c) => runCommand(c, { cwd: process.cwd() }),
           execInstall: (c) => runInstall(c, { cwd: process.cwd() }),
           readFile: (p) => readIfExists(p),
@@ -782,13 +834,17 @@ export function Console(): React.ReactElement {
       return;
     }
     const prompt = await resolveContext(text);
-    const system = mode === "plan" ? THINKING_SYSTEM : undefined;
+    const system =
+      mode === "plan" ? THINKING_SYSTEM : autonomy === "auto" ? `${CHAT_SYSTEM} ${AUTO_CHAT_SYSTEM}` : CHAT_SYSTEM;
+    const stream = throttleAppend((t) => setPartial((p) => p + t));
     setBusy(true);
     setPartial("");
     try {
-      const full = await callProvider(prompt, (t) => setPartial((p) => p + t), system);
+      const full = await callProvider(prompt, stream.push, system);
+      stream.flush();
       push("ai", full.trim() || "(empty response)", "chat");
     } catch (err) {
+      stream.flush();
       push("err", err instanceof Error ? err.message : String(err), "chat");
     } finally {
       setPartial("");
@@ -833,6 +889,8 @@ export function Console(): React.ReactElement {
               inputActive={page === 1 && !confirm && !help}
               slashOpen={slashOpen}
               slashSel={slashSel}
+              autonomy={autonomy}
+              agentLabel={(provider?.label ?? "model").split(":")[0] || "model"}
             />
           )}
           {page === 2 && (
@@ -861,6 +919,7 @@ export function Console(): React.ReactElement {
               onMcpSubmit={compileMcp}
             />
           )}
+          {page === 4 && <NewsPage sel={sel4} />}
           {confirm && <ConfirmBox desc={confirm.desc} diff={confirm.diff} />}
         </>
       )}

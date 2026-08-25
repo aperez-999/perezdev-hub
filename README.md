@@ -6,7 +6,7 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  ◤ PEREZDEV HUB  v0.2.0          Chat   Skills   MCP     ● llama3 │
+│  ◤ PEREZDEV HUB  v0.2.0     Chat  Skills  MCP  News     ● llama3 │
 │                                                              │
 │  Ask anything about this repo.                               │
 │  Shift+← / Shift+→  Skills and MCP ·  ?  keys                │
@@ -54,17 +54,16 @@ Just run it:
 perezdev
 ```
 
-This opens the fullscreen TUI. Chat is the home page: type a prompt. Switch pages with **`Shift+←` / `Shift+→`**. Detected tools show on Skills and MCP, not as a catalog of empty circles on Chat. `Esc` returns to chat.
-
-Three pages:
+This opens the fullscreen TUI. Chat is the home page: type a prompt. Switch pages with **`Shift+←` / `Shift+→`**. Detected tools show on Skills and MCP. `Esc` returns to chat.
 
 | Page | What it does |
 | --- | --- |
-| **Chat** | Talk to your local/cloud model. |
-| **Skills** | Describe an agent → generate and install skill files. |
-| **MCP** | Install MCP servers for this repo. |
+| **Chat** | Talk to your local/cloud model. `Ctrl+A` turns on local auto (writes skip the Y/N gate). |
+| **Skills** | Describe an agent → generate and install skill files into every supported tool. |
+| **MCP** | Install MCP servers for this repo (filesystem, git, databases, search, …). |
+| **News** | Headlines about MCP, skills, models, and languages. |
 
-In **Manual** autonomy any action that writes files pops an inline `[Y] Approve / [N] Cancel` dialog on the current page. Toggle to **Autonomous** to skip it.
+In **manual** mode any action that writes files pops an inline `[Y] Approve / [N] Cancel` dialog. Toggle to **AUTO** (`Ctrl+A` or `/auto`) to skip it.
 
 ### Keys
 
@@ -74,8 +73,8 @@ In **Manual** autonomy any action that writes files pops an inline `[Y] Approve 
 | `?` | Help overlay (empty prompt; `/help` always works) |
 | `Ctrl+M` | Pick model |
 | `Shift+Tab` | Normal ↔ Planning mode (routes to a reasoning model) |
-| `Ctrl+A` | Manual ↔ Autonomous |
-| `Ctrl+T` | Thinking depth (low / medium / high) |
+| `Ctrl+A` | Manual ↔ local auto (AUTO skips write confirms) |
+| `Ctrl+T` | Local reply length (low / medium / high) |
 | `Tab` (Skills / MCP) | Cycle compose fields |
 | `F1` / `F2` / `F3` | Same pages (legacy, not shown in chrome) |
 | `Esc` | Close overlay / dialog, return to chat |
@@ -156,7 +155,7 @@ Some features run on a bundled local **Python 3** engine (stdlib only), spoken t
 
 - **`fix`** parses a traceback, finds the offending file/line, classifies the error, and prints the fix.
 - **`map`** renders a fast file-tree of any directory.
-- The **chat console** detects pulled models via `http://localhost:11434/api/tags` and streams completions from Ollama, routing to a fast code model in Normal mode and a reasoning model in Planning mode.
+- The **chat console** detects pulled models via `http://localhost:11434/api/tags` and streams completions from Ollama. The selected model is kept loaded (`keep_alive`) so the next prompt is not a cold start. Normal mode uses a short-answer cap (`Ctrl+T` low/med/high); Planning mode routes to a reasoning model when one is pulled.
 
 ```bash
 ollama pull qwen2.5-coder   # fast, code-optimized (Normal slot)
@@ -186,11 +185,13 @@ PerezDev only writes to each tool's standard user config directories and never t
 
 ```bash
 npm install
-npm run dev -- --help   # run from source
+npm test                # vitest, including Ink-driven TUI tests
+npm run dev             # live hub (Enter on intro, then type a prompt)
 npm run build           # bundle to dist/
-npm test                # vitest
 npm run typecheck
 ```
+
+The TUI is a terminal app — `npm test` is the automated check. For a live pass: `npm run dev`, press Enter, `?` for keys, `Shift+←` / `Shift+→` for pages, then a short Chat prompt. `Ctrl+T` caps how long a local model is allowed to talk.
 
 The codebase is small and layered: `core/` (spec, generation, scan, providers, engine bridge), `adapters/` (one file per tool), `registry/` (bundled catalog), `tui/` (Ink components + pages), and `commands/` (the CLI surface). Adding a new AI tool is a single adapter implementing the `Adapter` interface.
 

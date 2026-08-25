@@ -148,13 +148,13 @@ No shadows. Depth is **one focused border** (`theme.accent`) vs idle (`theme.lin
 ### Header
 
 - Left: `PEREZDEV HUB` + muted `vX.Y.Z`
-- Center: three tabs — Chat, Skills, MCP. Active = cyan fill + ink text. Idle = muted.
+- Center: tabs — Chat, Skills, MCP, News. Active = cyan fill + ink text. Idle = muted.
 - Right: one model pill — `● llama3:latest` (ok if local, muted if offline). No “local” word if the dot already means local.
 - No Shift-arrow hint in the header. That lives in `?` and the empty-prompt line.
 
 ### Tabs
 
-- Labels: **Chat**, **Skills**, **MCP** (not Chat Engine / Skill Builder / MCP Manager).
+- Labels: **Chat**, **Skills**, **MCP**, **News**.
 - Switching: `Shift+←` / `Shift+→` always, including while typing. Optional `Ctrl+1/2/3` later if digits stay reserved for the prompt.
 
 ### Prompt
@@ -166,8 +166,8 @@ No shadows. Depth is **one focused border** (`theme.accent`) vs idle (`theme.lin
 
 ### Transcript (Chat)
 
-- User: `you` in violet, then text in `fg`.
-- Model: model short name in cyan, then text in `fg`.
+- User: `you` in violet on its own line, then text in `fg`.
+- Model: short model name in cyan on its own line, then text in `fg`.
 - System/ok/err: `✔` / `✘` / `●` plus `fg2`. Do not mix boot tutorials into this list.
 
 ### Confirm

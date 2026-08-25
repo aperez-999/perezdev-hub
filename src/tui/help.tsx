@@ -4,15 +4,15 @@ import { theme } from "./theme.js";
 import { COMMANDS } from "./commands.js";
 
 const KEYS: [string, string][] = [
-  ["Shift+← / →", "Switch Chat / Skills / MCP"],
+  ["Shift+← / →", "Chat / Skills / MCP / News"],
   ["Shift+Tab", "Normal ↔ Planning"],
   ["Ctrl+M", "Pick model"],
-  ["Ctrl+A", "Manual ↔ Autonomous"],
-  ["Ctrl+T", "Thinking depth"],
+  ["Ctrl+A", "Manual ↔ local auto"],
+  ["Ctrl+T", "Reply length (local)"],
   ["/", "Slash commands"],
   ["?", "This help (empty prompt)"],
   ["Esc", "Close / back to Chat"],
-  ["F1 F2 F3", "Pages (legacy)"],
+  ["F1–F4", "Pages (legacy)"],
 ];
 
 /** Full-screen help overlay (terminals can't dim-and-float). */

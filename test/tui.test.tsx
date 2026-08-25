@@ -100,7 +100,7 @@ describe("Console TUI", () => {
     );
     const { lastFrame } = render(<App />);
     await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
-    expect(lastFrame()).toMatch(/auto/);
+    expect(lastFrame()).toMatch(/AUTO/);
   }, 15000);
 
   it("F3 shows the industry MCP directory and custom prompt field", async () => {
@@ -112,6 +112,8 @@ describe("Console TUI", () => {
     const f = lastFrame() ?? "";
     expect(f).toMatch(/Local Filesystem/);
     expect(f).toMatch(/PostgreSQL Database/);
+    expect(f).toMatch(/Git/);
+    expect(f).toMatch(/HTTP Fetch/);
     expect(f).toMatch(/Discover from repo/);
     expect(f).toMatch(/custom server/);
   }, 15000);
@@ -203,13 +205,14 @@ describe("Console TUI", () => {
     await until(() => !/SLASH COMMANDS/.test(lastFrame() ?? "") && /Local Filesystem/.test(lastFrame() ?? ""), 4000);
   }, 15000);
 
-  it("renders three page tabs without numbered chrome or a header nav hint", async () => {
+  it("renders four page tabs without numbered chrome or a header nav hint", async () => {
     const { lastFrame } = render(<App />);
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     const f = lastFrame() ?? "";
     expect(f).toMatch(/ Chat /);
     expect(f).toMatch(/ Skills /);
     expect(f).toMatch(/ MCP /);
+    expect(f).toMatch(/ News /);
     expect(f).not.toMatch(/1 Chat/);
     expect(f).not.toMatch(/2 Skills/);
     expect(f).not.toMatch(/3 MCP/);
@@ -220,9 +223,9 @@ describe("Console TUI", () => {
     const { lastFrame, stdin } = render(<App />);
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
-    stdin.write(SHIFT_LEFT); // page 1 → wrap to page 3
-    await until(() => /Local Filesystem/.test(lastFrame() ?? ""), 4000);
-    stdin.write(SHIFT_RIGHT); // page 3 → wrap to page 1
+    stdin.write(SHIFT_LEFT); // page 1 → wrap to page 4 News
+    await until(() => /AI tooling feed/.test(lastFrame() ?? ""), 4000);
+    stdin.write(SHIFT_RIGHT); // page 4 → wrap to page 1
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 1 → page 2
     await until(() => /Describe the agent/.test(lastFrame() ?? ""), 4000);

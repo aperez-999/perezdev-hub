@@ -47,7 +47,7 @@ Three words: **direct, local, calm.**
 1. **The prompt is the product.** If chrome and the conversation compete, chrome loses.
 2. **Say each fact once.** Model, page, and brand have one home each.
 3. **Show presence, not catalog.** Only detected tools and live state. Capabilities live in help.
-4. **SDLC, not settings.** Chat is Run. Skills is Build. MCP is Connect. Confirm is Review. No fourth tab until those three are quiet.
+4. **SDLC, not settings.** Chat is Run. Skills is Build. MCP is Connect. News is the feed. Confirm is Review.
 5. **Safe by default, fast when asked.** Manual confirm on writes; Autonomous is a mode, not the landing.
 
 ## Accessibility & Inclusion

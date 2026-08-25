@@ -19,7 +19,7 @@ PerezDev Hub is an **AI SDLC workbench** in the terminal:
 | **Connect** | MCP | Pick or discover servers → install into the same tools. |
 | **Review** | Overlay, not a tab | Confirm writes (`Y`/`N` + diff). `doctor` stays CLI / `/` later. |
 
-Three tabs. Review is a dialog. That is the whole map.
+Three tabs plus **News**. Review is a dialog.
 
 ---
 
@@ -46,7 +46,7 @@ If a new user cannot do that without reading chrome, the redesign failed.
 perezdev
  ├─ Intro (optional, must vanish)
  └─ Hub shell
-      ├─ Header     brand · Chat | Skills | MCP · model
+      ├─ Header     brand · Chat | Skills | MCP | News · model
       ├─ Main       exactly one page
       └─ Footer     prompt (Chat/Skills compose) + mode/autonomy/? 
 ```

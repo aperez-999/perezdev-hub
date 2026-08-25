@@ -15,6 +15,7 @@ export interface ToolChip {
   id: ToolId;
   label: string;
   on: boolean;
+  present: boolean;
 }
 
 function tint(line: string): string {
@@ -74,12 +75,11 @@ export function FactoryPage({
             <Box flexWrap="wrap">
               {tools.map((t, i) => {
                 const here = focus === "tools" && i === toolIdx;
-                const color = here ? theme.accent : t.on ? theme.fg : theme.muted;
+                const color = here ? theme.accent : t.on ? theme.fg : t.present ? theme.fg2 : theme.muted;
                 return (
                   <Box key={t.id} marginRight={1}>
                     <Text color={color} bold={here}>
-                      {t.on ? "● " : "○ "}
-                      {t.label}
+                      {`${t.on ? "● " : "○ "}${t.label}${t.present && !t.on ? " · in" : ""}`}
                     </Text>
                   </Box>
                 );
@@ -100,7 +100,8 @@ export function FactoryPage({
 
           {agents.length > 0 && (
             <Box marginTop={1} flexDirection="column">
-              {agents.slice(0, 5).map((a) => (
+              <Text color={theme.dim}>installed</Text>
+              {agents.slice(0, 8).map((a) => (
                 <Text key={a.name} color={theme.ok} wrap="truncate-end">
                   {`• ${a.name} `}
                   <Text color={theme.muted}>{`(${a.targets.join("/")} · v${a.version})`}</Text>

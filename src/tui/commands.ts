@@ -16,6 +16,7 @@ export const COMMANDS: Command[] = [
   { name: "/build", usage: "/build <description>", help: "Generate a custom agent + skill files" },
   { name: "/create", usage: "/create <name>: <purpose>", help: "Generate an agent with an explicit name" },
   { name: "/mcp", usage: "/mcp auto | <id>", help: "Discover or inject MCP servers for this repo" },
+  { name: "/auto", usage: "/auto", help: "Toggle local auto (skip Y/N on writes)" },
   { name: "/pull", usage: "/pull <model>", help: "Download an Ollama model (live progress)" },
   { name: "/recommend", usage: "/recommend", help: "Project-tailored agent + MCP suggestions" },
   { name: "/install", usage: "/install <name>", help: "Install a suggested agent or MCP server" },
