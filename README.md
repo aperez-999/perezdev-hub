@@ -16,7 +16,7 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Launching `perezdev` shows a short logo. The first run is an AI-SDLC setup: detect tools, pick write-targets (and see install commands for anything missing), optionally install the Superpowers skill pack, then the hub. Esc skips. After that, `~/.perezdevrc` remembers `setup_complete` and you go straight to Chat. The intro uses an alternate screen so it does not stay in scrollback.
+Launching `perezdev` shows a short logo. Press ↵ to continue. The first run is an AI-SDLC setup: detect tools, pick write-targets (and see install commands for anything missing), optionally install the Superpowers skill pack, then the hub. Esc skips. After that, `~/.perezdevrc` remembers `setup_complete` and you go straight to Chat. The intro uses an alternate screen so it does not stay in scrollback.
 
 Command: `perezdev` (aliases `pdh`, `inspo`).
 
@@ -186,6 +186,7 @@ PerezDev only writes to each tool's standard user config directories and never t
 ```bash
 npm install
 npm test                # vitest, including Ink-driven TUI tests
+npm run smoke           # dump intro / setup / hub / live News frames
 npm run dev             # live hub (Enter on intro, then type a prompt)
 npm run build           # bundle to dist/
 npm run typecheck

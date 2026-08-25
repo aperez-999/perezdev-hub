@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { clearNewsCache, fetchNews, NEWS_DIGEST, parseAlgolia } from "../src/core/news.js";
+import { clearNewsCache, fetchNews, NEWS_DIGEST, parseAlgolia, selectHeadlines } from "../src/core/news.js";
 import { parseLocalIntent } from "../src/tui/local-intent.js";
 
 afterEach(() => {
@@ -39,19 +39,34 @@ describe("parseAlgolia", () => {
   });
 });
 
+describe("selectHeadlines", () => {
+  it("drops off-topic titles that Algolia ranked in", () => {
+    const items = parseAlgolia({
+      hits: [
+        { title: "Show HN: Peek – A Figma like DB GUI", url: "https://peek.test", objectID: "1" },
+        { title: "Claude Code skills in the wild", url: "https://ex.test", objectID: "2" },
+      ],
+    });
+    expect(selectHeadlines(items).map((i) => i.title)).toEqual(["Claude Code skills in the wild"]);
+  });
+});
+
 describe("fetchNews", () => {
-  it("uses Algolia JSON and caches a non-empty live result", async () => {
+  it("queries unquoted topic endpoints and caches a non-empty live result", async () => {
     process.env.PDH_TEST_NEWS = "1";
-    let calls = 0;
-    const fetcher = (async () => {
-      calls += 1;
+    const urls: string[] = [];
+    const fetcher = (async (input: string | URL) => {
+      urls.push(String(input));
       return new Response(JSON.stringify(FIXTURE), { status: 200 });
     }) as typeof fetch;
     const first = await fetchNews(fetcher);
     expect(first.live).toBe(true);
     expect(first.items[0]?.title).toContain("MCP");
+    expect(urls).toHaveLength(4);
+    expect(urls.join(" ")).not.toContain("%22");
+    expect(urls.some((u) => decodeURIComponent(u).includes("Claude Code"))).toBe(true);
     const second = await fetchNews(fetcher);
-    expect(calls).toBe(1);
+    expect(urls).toHaveLength(4);
     expect(second.items).toEqual(first.items);
   });
 
@@ -67,7 +82,7 @@ describe("fetchNews", () => {
     expect(first.items).toEqual(NEWS_DIGEST);
     const second = await fetchNews(empty);
     expect(second.live).toBe(false);
-    expect(calls).toBe(2);
+    expect(calls).toBe(8);
   });
 
   it("does not poison the cache on a failed fetch", async () => {

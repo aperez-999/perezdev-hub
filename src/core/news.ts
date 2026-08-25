@@ -11,19 +11,25 @@ export interface NewsResult {
   live: boolean;
 }
 
-const ALGOLIA =
-  "https://hn.algolia.com/api/v1/search_by_date?" +
-  new URLSearchParams({
-    query: 'MCP OR "Claude Code" OR Ollama OR Cursor',
-    tags: "story",
-    hitsPerPage: "12",
-  }).toString();
+const TOPICS = ["Claude Code", "Ollama", "MCP", "Cursor"] as const;
 
 const UA =
   "Mozilla/5.0 (compatible; perezdev-hub/0.2; +https://github.com/aperez-999/perezdev-hub)";
 
 const MAX_ITEMS = 12;
 const CACHE_MS = 30 * 60 * 1000;
+
+/** Title/url must mention the topic — Algolia otherwise ranks unrelated stories. */
+const RELEVANT =
+  /\b(mcp|model context|claude|ollama|cursor|codex|anthropic|agent skill|llm)\b/i;
+
+function algoliaUrl(query: string): string {
+  return (
+    "https://hn.algolia.com/api/v1/search_by_date?query=" +
+    encodeURIComponent(query) +
+    "&tags=story&hitsPerPage=8"
+  );
+}
 
 let cache: { at: number; result: NewsResult } | null = null;
 
@@ -103,30 +109,48 @@ export function parseAlgolia(json: unknown): NewsItem[] {
           : "";
     const published = typeof hit.created_at === "string" ? hit.created_at : "";
     out.push({ title, source: "HN", url, published });
-    if (out.length >= MAX_ITEMS) break;
   }
   return out;
+}
+
+/** Dedupe and keep on-topic headlines. Exported for tests. */
+export function selectHeadlines(items: NewsItem[]): NewsItem[] {
+  const seen = new Set<string>();
+  const picked: NewsItem[] = [];
+  for (const it of items) {
+    if (!RELEVANT.test(it.title) && !RELEVANT.test(it.url)) continue;
+    const key = it.title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(it);
+    if (picked.length >= MAX_ITEMS) break;
+  }
+  return picked;
 }
 
 /** Fetch live HN. Empty or failed responses are not cached. */
 export async function fetchNews(fetcher: typeof fetch = fetch): Promise<NewsResult> {
   const now = Date.now();
   if (cache && now - cache.at < CACHE_MS) return cache.result;
-  try {
-    const res = await fetcher(ALGOLIA, {
-      signal: AbortSignal.timeout(8000),
-      headers: { "user-agent": UA, accept: "application/json" },
-    });
-    if (res.ok) {
-      const items = parseAlgolia(await res.json());
-      if (items.length > 0) {
-        const result: NewsResult = { items, live: true };
-        cache = { at: now, result };
-        return result;
+  const batches = await Promise.all(
+    TOPICS.map(async (q) => {
+      try {
+        const res = await fetcher(algoliaUrl(q), {
+          signal: AbortSignal.timeout(8000),
+          headers: { "user-agent": UA, accept: "application/json" },
+        });
+        if (!res.ok) return [] as NewsItem[];
+        return parseAlgolia(await res.json());
+      } catch {
+        return [] as NewsItem[];
       }
-    }
-  } catch {
-    // digest below
+    }),
+  );
+  const items = selectHeadlines(batches.flat());
+  if (items.length > 0) {
+    const result: NewsResult = { items, live: true };
+    cache = { at: now, result };
+    return result;
   }
   return { items: NEWS_DIGEST, live: false };
 }

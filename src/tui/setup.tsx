@@ -115,6 +115,7 @@ export function Setup({
   }
 
   function afterPack(pack: StarterPack, message?: string): void {
+    if (finished.current) return;
     packRef.current = pack;
     if (offerMcpRef.current && selectedRef.current.length > 0) {
       setStatus(message ?? "");
@@ -185,7 +186,7 @@ export function Setup({
           skillsRef.current = skills;
           try {
             const planned = await planSuperpowersPack(skills, selectedRef.current);
-            setDiff(plannedToDiff(planned));
+            setDiff(shortDiff(plannedToDiff(planned)));
             setStep("confirm");
           } catch (e) {
             afterPack("superpowers", e instanceof Error ? e.message : String(e));
@@ -198,7 +199,7 @@ export function Setup({
     if (step === "confirm") {
       const yes = input.toLowerCase() === "y";
       const no = input.toLowerCase() === "n";
-      if (!yes && !no || busyRef.current) return;
+      if ((!yes && !no) || busyRef.current) return;
       if (no) {
         afterPack("superpowers", "skipped Superpowers pack");
         return;
@@ -220,7 +221,7 @@ export function Setup({
     if (step === "mcp") {
       const yes = input.toLowerCase() === "y";
       const no = input.toLowerCase() === "n";
-      if (!yes && !no || busyRef.current) return;
+      if ((!yes && !no) || busyRef.current) return;
       busyRef.current = true;
       void (async () => {
         let message = status;
@@ -242,15 +243,17 @@ export function Setup({
   });
 
   const footer =
-    step === "targets"
-      ? "space toggle · ↵ next · esc skip"
-      : step === "mcp"
-        ? "Y install filesystem + git · N skip · esc skip"
-        : step === "confirm"
-          ? "Y write · N skip pack · esc skip"
-          : step === "pack"
-            ? "↵ choose · esc skip"
-            : "↵ next · esc skip";
+    step === "detect" && tools.length === 0
+      ? "esc skip"
+      : step === "targets"
+        ? "space toggle · ↵ next · esc skip"
+        : step === "mcp"
+          ? "Y install filesystem + git · N skip · esc skip"
+          : step === "confirm"
+            ? "Y write · N skip pack · esc skip"
+            : step === "pack"
+              ? "↵ choose · esc skip"
+              : "↵ next · esc skip";
 
   return (
     <Box flexDirection="column" width={cols} paddingX={2} paddingY={1}>
@@ -352,7 +355,7 @@ function TargetsStep({
 function MissingStep({ missing }: { missing: ToolPresence[] }): React.ReactElement {
   return (
     <Box flexDirection="column">
-      <Text color={theme.dim}>install these to use them as write-targets (not run for you)</Text>
+      <Text color={theme.dim}>Not installed — paste to install. PerezDev will not run this.</Text>
       {missing.map((t) => (
         <Box key={t.id} flexDirection="column" marginTop={0}>
           <Text color={theme.fg}>{t.name}</Text>
@@ -390,4 +393,10 @@ function PackStep({ sel }: { sel: number }): React.ReactElement {
       })}
     </Box>
   );
+}
+
+/** Keep the confirm box from flooding a 24-row terminal. */
+function shortDiff(lines: string[], cap = 8): string[] {
+  if (lines.length <= cap) return lines;
+  return [...lines.slice(0, cap), `+ ${lines.length - cap} more`];
 }

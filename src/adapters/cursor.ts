@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentSpec } from "../core/agent-spec.js";
 import { home } from "../core/config.js";
+import { isCursorHost } from "../core/host.js";
 import { exists, readIfExists, removeIfExists } from "../util/fs-safe.js";
 import type { Adapter, Detection, ManagedItem, PlannedFile } from "./types.js";
 import {
@@ -29,7 +30,9 @@ export class CursorAdapter implements Adapter {
 
   async detect(): Promise<Detection> {
     const found = await exists(this.root);
-    return { installed: found, detail: found ? `found ${this.root}` : `no ${this.root}` };
+    if (found) return { installed: true, detail: `found ${this.root}` };
+    if (isCursorHost()) return { installed: true, detail: "running inside Cursor" };
+    return { installed: false, detail: `no ${this.root}` };
   }
 
   mcpConfigPath(): string {

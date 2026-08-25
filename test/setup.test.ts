@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { initialSelected, missingSelected, shouldOfferCoreMcp, toggleId } from "../src/core/setup.js";
 import { toolInstallCommand } from "../src/core/tool-install.js";
+import { chatHint } from "../src/tui/copy.js";
 import type { ToolPresence } from "../src/core/setup.js";
 
 const TOOLS: ToolPresence[] = [
@@ -36,5 +37,11 @@ describe("toolInstallCommand", () => {
     expect(toolInstallCommand("claude-code")).toContain("npm install -g @anthropic-ai/claude-code");
     expect(toolInstallCommand("cursor")).toMatch(/cursor\.com/i);
     expect(toolInstallCommand("codex")).toContain("@openai/codex");
+  });
+});
+
+describe("chatHint", () => {
+  it("uses display names for write-targets", () => {
+    expect(chatHint(["cursor", "claude-code"])).toBe("Writing to Cursor · Claude Code · Shift+→ Skills");
   });
 });

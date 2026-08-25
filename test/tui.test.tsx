@@ -249,7 +249,7 @@ describe("Intro splash", () => {
   it("holds on the enter hint until a key is pressed", async () => {
     let done = 0;
     const { lastFrame, stdin } = render(<Intro onDone={() => (done += 1)} />);
-    await until(() => /press . to enter the hub/.test(lastFrame() ?? ""), 6000);
+    await until(() => /press . to continue/.test(lastFrame() ?? ""), 6000);
     expect(lastFrame()).not.toMatch(/QUICK START/);
     expect(lastFrame()).not.toMatch(/scanning your environment/);
     await wait(700);
@@ -295,6 +295,7 @@ describe("first-run Setup", () => {
     await wait(80);
     stdin.write("\r");
     await until(() => /npm install -g @anthropic-ai\/claude-code/.test(lastFrame() ?? ""), 4000);
+    expect(lastFrame()).toMatch(/will not run this/i);
   }, 12000);
 });
 

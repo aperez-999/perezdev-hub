@@ -21,7 +21,7 @@ function readVersion(): string {
   } catch {
     // fall through to default
   }
-  return "0.1.0";
+  return "0.2.0";
 }
 
 export const version: string = readVersion();

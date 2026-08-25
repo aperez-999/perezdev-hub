@@ -139,6 +139,9 @@ describe("ClineAdapter (flat markdown)", () => {
 
 describe("registry detection", () => {
   it("detects a tool only when its root dir exists", async () => {
+    delete process.env.CURSOR_TRACE_ID;
+    delete process.env.CURSOR_AGENT;
+    delete process.env.TERM_PROGRAM;
     const { detectAll } = await import("../src/adapters/registry.js");
     const before = await detectAll();
     expect(before.every((d) => !d.detection.installed)).toBe(true);
@@ -147,5 +150,15 @@ describe("registry detection", () => {
     const after = await detectAll();
     const cc = after.find((d) => d.adapter.id === "claude-code");
     expect(cc!.detection.installed).toBe(true);
+  });
+
+  it("marks Cursor present when running inside the Cursor host", async () => {
+    process.env.CURSOR_TRACE_ID = "1";
+    const { CursorAdapter } = await import("../src/adapters/cursor.js");
+    const a = new CursorAdapter();
+    const d = await a.detect();
+    expect(d.installed).toBe(true);
+    expect(d.detail).toMatch(/inside Cursor/);
+    delete process.env.CURSOR_TRACE_ID;
   });
 });

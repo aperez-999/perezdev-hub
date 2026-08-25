@@ -69,7 +69,7 @@ export function Intro({ onDone }: { onDone: () => void }): React.ReactElement {
       <Box marginTop={2} flexDirection="column" alignItems="center">
         {booted ? (
           <Text color={blink ? theme.accent : theme.dim} bold>
-            press ↵ to enter the hub
+            press ↵ to continue
           </Text>
         ) : (
           <Text color={theme.dim}> </Text>

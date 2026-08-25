@@ -17,12 +17,14 @@ import { runAutofixCommand } from "./commands/autofix.js";
 import { runProfileExport, runProfileImport, runProfileShow } from "./commands/profile.js";
 import { runMap } from "./commands/map.js";
 
+import { version as VERSION } from "./tui/version.js";
+
 const program = new Command();
 
 program
   .name("perezdev")
-  .description("PerezDev Hub — recommend, generate, and manage AI agents and MCP servers across your AI coding tools.")
-  .version("0.1.0")
+  .description("PerezDev Hub — local-first AI SDLC workbench: Chat, Skills, MCP, and News across your coding tools.")
+  .version(VERSION)
   // No subcommand → animated TUI in a terminal, else show help.
   .action(wrap(home));
 
