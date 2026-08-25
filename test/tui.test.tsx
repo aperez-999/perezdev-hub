@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { render } from "ink-testing-library";
 import { App } from "../src/tui/app.js";
 import { Intro } from "../src/tui/intro.js";
+import { Setup, type SetupLanding } from "../src/tui/setup.js";
+import { loadRc } from "../src/core/rc.js";
 
 let home: string;
 let cwd: string;
@@ -254,6 +256,45 @@ describe("Intro splash", () => {
     expect(done).toBe(0);
     stdin.write("\r");
     await until(() => done === 1, 2000);
+  }, 12000);
+});
+
+describe("first-run Setup", () => {
+  const snap = {
+    tools: [
+      { id: "cursor" as const, name: "Cursor", present: true },
+      { id: "claude-code" as const, name: "Claude Code", present: false },
+    ],
+    ollama: { up: true, model: "llama3" },
+    git: false,
+  };
+
+  it("shows write-targets and skip writes setup_complete", async () => {
+    const landing: { current: SetupLanding | null } = { current: null };
+    const { lastFrame, stdin } = render(<Setup snapshot={snap} onDone={(r) => (landing.current = r)} />);
+    await wait(150);
+    expect(lastFrame()).toMatch(/write skills into/);
+    expect(lastFrame()).toMatch(/Cursor/);
+    expect(lastFrame()).toMatch(/Claude Code/);
+    expect(lastFrame()).toMatch(/missing/);
+    stdin.write(ESC);
+    await until(() => landing.current !== null);
+    expect(landing.current?.pack).toBe("empty");
+    const rc = await loadRc();
+    expect(rc.setup_complete).toBe(true);
+    expect(rc.default_targets).toEqual(["cursor"]);
+  });
+
+  it("shows the official install command for a missing selected tool", async () => {
+    const { lastFrame, stdin } = render(<Setup snapshot={snap} onDone={() => {}} />);
+    await wait(150);
+    expect(lastFrame()).toMatch(/write skills into/);
+    stdin.write(ESC + "[B");
+    await wait(80);
+    stdin.write(" ");
+    await wait(80);
+    stdin.write("\r");
+    await until(() => /npm install -g @anthropic-ai\/claude-code/.test(lastFrame() ?? ""), 4000);
   }, 12000);
 });
 

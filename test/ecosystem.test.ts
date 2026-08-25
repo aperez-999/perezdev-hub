@@ -93,6 +93,12 @@ describe("perezdevrc cache", () => {
     expect(rcPath()).toContain(".perezdevrc");
   });
 
+  it("persists setup_complete", async () => {
+    await saveRc({ last_active_tab: 1, autonomy_mode: "manual", mcp_ignored_servers: [], setup_complete: true });
+    const rc = await loadRc();
+    expect(rc.setup_complete).toBe(true);
+  });
+
   it("falls back to defaults on a corrupt file", async () => {
     await writeFile(rcPath(), "{ not json");
     const rc = await loadRc();
