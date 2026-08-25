@@ -207,4 +207,4 @@ No shadows. Depth is **one focused border** (`theme.accent`) vs idle (`theme.lin
 - **Don't** use emoji in tabs, headers, or log glyphs (status uses `● ○ ✔ ✘ ›` only).
 - **Don't** use border-left color bars, gradient text in the hub, or glass panels.
 - **Don't** advertise `1` `2` `3` as page keys on Chat (those keys type into the prompt).
-- **Don't** add a fourth page for Quick Start; first-run copy is one empty-state line.
+- **Don't** add a fifth hub tab for setup; first-run is an overlay, then one empty-state line.

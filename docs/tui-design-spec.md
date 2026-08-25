@@ -1,6 +1,6 @@
 # TUI redesign spec
 
-**Status:** slices A–G landed (intro, quiet Chat, Skills form, MCP list, copy/`?`/README). Keep this file as the source of truth.  
+**Status:** slices A–G landed, plus first-run AI-SDLC setup, live News (Algolia + digest), and template-aligned skill markdown. Keep this file as the source of truth.  
 **Follow:** `PRODUCT.md` (who/why) → `DESIGN.md` (look) → **this file** (screens, keys, SDLC, rollout).  
 **Do not implement from the current screenshot.** The live hub is the *from*; this is the *to*.
 
@@ -45,6 +45,7 @@ If a new user cannot do that without reading chrome, the redesign failed.
 ```
 perezdev
  ├─ Intro (optional, must vanish)
+ ├─ Setup (first run only — not a tab; skip writes setup_complete)
  └─ Hub shell
       ├─ Header     brand · Chat | Skills | MCP | News · model
       ├─ Main       exactly one page

@@ -22,7 +22,7 @@ They are not first-time programmers. They are impatient with dashboards that exp
 
 PerezDev Hub is the **AI SDLC workbench** for a local machine: one place to run a model, encode how you work as skills/agents, and connect MCP tools — then install that setup across the editors you actually use.
 
-Success is: within 30 seconds of `perezdev`, a first-time user can send a prompt and understand how to reach Skills and MCP without reading a README. A returning user never sees a tutorial.
+Success is: the first `perezdev` run detects tools, lets you pick write-targets, and can install a Superpowers skill pack — then Chat. A returning user never sees that setup (`setup_complete` in `~/.perezdevrc`).
 
 ## Positioning
 

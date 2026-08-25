@@ -16,7 +16,7 @@ PerezDev Hub scans your project, **generates** agents tailored to it (no canned 
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Launching `perezdev` shows a short logo, then the hub. Press `↵` (or any key) to enter. The intro uses an alternate screen so it does not stay in scrollback.
+Launching `perezdev` shows a short logo. The first run is an AI-SDLC setup: detect tools, pick write-targets (and see install commands for anything missing), optionally install the Superpowers skill pack, then the hub. Esc skips. After that, `~/.perezdevrc` remembers `setup_complete` and you go straight to Chat. The intro uses an alternate screen so it does not stay in scrollback.
 
 Command: `perezdev` (aliases `pdh`, `inspo`).
 
@@ -54,14 +54,14 @@ Just run it:
 perezdev
 ```
 
-This opens the fullscreen TUI. Chat is the home page: type a prompt. Switch pages with **`Shift+←` / `Shift+→`**. Detected tools show on Skills and MCP. `Esc` returns to chat.
+This opens the fullscreen TUI. **First launch** walks detect → write-targets → starter pack (Superpowers, generate in hub, or empty Chat). Later launches open Chat. Switch pages with **`Shift+←` / `Shift+→`**. Detected tools show on Skills and MCP. `Esc` returns to chat.
 
 | Page | What it does |
 | --- | --- |
 | **Chat** | Talk to your local/cloud model. `Ctrl+A` turns on local auto (writes skip the Y/N gate). |
 | **Skills** | Describe an agent → generate and install skill files into every supported tool. |
 | **MCP** | Install MCP servers for this repo (filesystem, git, databases, search, …). |
-| **News** | Headlines about MCP, skills, models, and languages. |
+| **News** | HN headlines about MCP, skills, and models (bundled digest if live HN is down). |
 
 In **manual** mode any action that writes files pops an inline `[Y] Approve / [N] Cancel` dialog. Toggle to **AUTO** (`Ctrl+A` or `/auto`) to skip it.
 
