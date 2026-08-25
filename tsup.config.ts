@@ -7,6 +7,7 @@ export default defineConfig({
   clean: true,
   dts: false,
   sourcemap: true,
+  splitting: true,
   // Keep the optional LLM SDK out of the bundle so it stays truly optional
   // (loaded at runtime only when installed and a key is present).
   external: ["@anthropic-ai/sdk"],

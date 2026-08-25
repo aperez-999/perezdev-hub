@@ -139,6 +139,8 @@ def ollama_generate(params, emit):
     body = {"model": model, "prompt": params.get("prompt", ""), "stream": True}
     if params.get("system"):
         body["system"] = params["system"]
+    if params.get("keep_alive") is not None:
+        body["keep_alive"] = params["keep_alive"]
     if params.get("options"):
         body["options"] = params["options"]
     req = urllib.request.Request(
@@ -163,6 +165,30 @@ def ollama_generate(params, emit):
     except urllib.error.URLError as exc:
         raise RuntimeError("Ollama not reachable at %s (%s)" % (OLLAMA, exc.reason))
     return {"model": model, "response": "".join(parts)}
+
+
+def ollama_load(params):
+    """Load a model into Ollama RAM without running a real prompt (keeps weights warm)."""
+    model = params.get("model")
+    if not model:
+        raise ValueError("ollama_load requires a model")
+    body = {
+        "model": model,
+        "prompt": "",
+        "stream": False,
+        "keep_alive": params.get("keep_alive", "30m"),
+    }
+    req = urllib.request.Request(
+        OLLAMA + "/api/generate",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            json.loads(resp.read().decode("utf-8"))
+    except urllib.error.URLError as exc:
+        raise RuntimeError("Ollama not reachable at %s (%s)" % (OLLAMA, exc.reason))
+    return {"model": model, "loaded": True}
 
 
 def ollama_pull(params, emit):
@@ -205,6 +231,7 @@ OPS = {
     "diagnose": diagnose,
     "filetree": filetree,
     "ollama_tags": ollama_tags,
+    "ollama_load": ollama_load,
 }
 STREAM_OPS = {"ollama_generate": ollama_generate, "ollama_pull": ollama_pull}
 

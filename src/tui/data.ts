@@ -42,7 +42,13 @@ export const catalogMcp: RegistryMcpServer[] = MCP_SERVERS;
 
 /** Load everything the TUI needs: tools, project scan, recommendations, installed. */
 export async function loadHome(): Promise<HomeData> {
-  const detected = await detectAll();
+  const [detected, scan, ecosystem, entries, mcpEntries] = await Promise.all([
+    detectAll(),
+    scanProject(),
+    scanEcosystem(),
+    listEntries(),
+    listMcpEntries(),
+  ]);
   const tools: ToolBadge[] = detected.map((d) => ({
     id: d.adapter.id,
     name: d.adapter.displayName,
@@ -50,11 +56,6 @@ export async function loadHome(): Promise<HomeData> {
   }));
   const installedIds = tools.filter((t) => t.installed).map((t) => t.id);
   const targets: ToolId[] = installedIds.length > 0 ? installedIds : [...TOOL_IDS];
-
-  const scan = await scanProject();
-  const ecosystem = await scanEcosystem();
-  const entries = await listEntries();
-  const mcpEntries = await listMcpEntries();
   const recs = recommend(
     scan,
     new Set(entries.map((e) => e.spec.name)),

@@ -92,13 +92,13 @@ Goal: less clustered, animated where it helps, no template feel, no drift.
 
 ## Phase 4 — Performance & startup (P1/P2)
 
-- [ ] **Lazy-load Ink + heavy deps** so plain CLI commands start fast (don't import
-      the TUI tree for `list`/`doctor`). *Verify:* `time perezdev list` improves; no Ink in the import graph for non-TUI commands.
-- [ ] **Parallelize adapter detection** (`detectAll` → `Promise.all`). *Verify:* unit timing; behavior unchanged.
+- [x] **Lazy-load Ink + heavy deps** so plain CLI commands start fast (don't import
+      the TUI tree for `list`/`doctor`). *Verify:* `perezdev list` no longer statically imports Ink; TUI loads on default TTY entry.
+- [x] **Parallelize adapter detection** (`detectAll` → `Promise.all`). *Verified:* unit tests; `loadHome` now also parallelizes scan + ecosystem + lockfile reads.
 - [ ] **Cache project scan** in `.perezdevrc` with a cheap invalidation key
       (lockfile mtime / file count). *Verify:* second `recommend` run skips re-scan; test.
-- [ ] **Reuse one engine process** across a command's calls (the `Engine` class
-      exists — ensure single instance per run). *Verify:* one spawn per command in engine test.
+- [x] **Reuse one engine process** across a command's calls (the `Engine` class
+      exists — ensure single instance per run). *Verified:* engine test reuses one process; TUI holds one `Engine` for the session.
 
 ## Phase 5 — Repo & contributor readiness (P1)
 

@@ -12,8 +12,8 @@ export interface EcoTool {
 
 /** Any-of presence check for a tool's config footprint. */
 async function any(paths: string[]): Promise<boolean> {
-  for (const p of paths) if (await exists(p)) return true;
-  return false;
+  const hits = await Promise.all(paths.map(exists));
+  return hits.some(Boolean);
 }
 
 /**
@@ -36,12 +36,20 @@ export async function scanEcosystem(dir: string = process.cwd(), h: string = hom
   ];
 
   const cursorHost = isCursorHost();
-  const out: EcoTool[] = [];
-  for (const [id, label, paths] of ide) {
-    const fromDisk = await any(paths);
-    const present = id === "cursor" ? fromDisk || cursorHost : fromDisk;
-    out.push({ id, label, kind: "ide", present });
-  }
-  for (const [id, label, paths] of cli) out.push({ id, label, kind: "cli", present: await any(paths) });
-  return out;
+  const ideRows = await Promise.all(
+    ide.map(async ([id, label, paths]) => {
+      const fromDisk = await any(paths);
+      const present = id === "cursor" ? fromDisk || cursorHost : fromDisk;
+      return { id, label, kind: "ide" as const, present };
+    }),
+  );
+  const cliRows = await Promise.all(
+    cli.map(async ([id, label, paths]) => ({
+      id,
+      label,
+      kind: "cli" as const,
+      present: await any(paths),
+    })),
+  );
+  return [...ideRows, ...cliRows];
 }

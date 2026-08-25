@@ -12,7 +12,6 @@ import { runImport } from "./commands/import.js";
 import { runManage } from "./commands/manage.js";
 import { runStackInstall } from "./commands/stacks.js";
 import { runHome } from "./commands/home.js";
-import { runTui } from "./commands/tui.js";
 import { runFix } from "./commands/fix.js";
 import { runAutofixCommand } from "./commands/autofix.js";
 import { runProfileExport, runProfileImport, runProfileShow } from "./commands/profile.js";
@@ -34,8 +33,10 @@ program
 
 /** Default entry: the animated TUI when interactive, else show help. */
 async function home(): Promise<void> {
-  if (process.stdout.isTTY) await runTui();
-  else program.outputHelp();
+  if (process.stdout.isTTY) {
+    const { runTui } = await import("./commands/tui.js");
+    await runTui();
+  } else program.outputHelp();
 }
 
 program
