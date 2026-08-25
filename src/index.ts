@@ -16,6 +16,7 @@ import { runFix } from "./commands/fix.js";
 import { runAutofixCommand } from "./commands/autofix.js";
 import { runProfileExport, runProfileImport, runProfileShow } from "./commands/profile.js";
 import { runMap } from "./commands/map.js";
+import { runPresets } from "./commands/presets.js";
 
 import { version as VERSION } from "./tui/version.js";
 
@@ -45,6 +46,11 @@ program
   .command("init")
   .description("Detect installed AI tools and set up ~/.config/perezdev")
   .action(wrap(runInit));
+
+program
+  .command("presets")
+  .description("List curated starter agents installable with create --preset")
+  .action(wrap(runPresets));
 
 program
   .command("create")

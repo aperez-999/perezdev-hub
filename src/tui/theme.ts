@@ -27,6 +27,3 @@ export const LOGO_GRADIENT = ["#34d8e6", "#7c8cff", "#b89dff"];
 // Layout (character cells).
 export const BUILDER_FORM_W = 46; // F2 compose column
 export const MCP_PANEL_W = 40; // F3 right panel
-
-// Retained for back-compat with any caller still cycling a named gradient.
-export const GRADIENTS = ["cristal", "teen", "mind", "vice", "morning", "passion"] as const;

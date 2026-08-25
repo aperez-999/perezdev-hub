@@ -20,7 +20,7 @@ export async function runManage(): Promise<void> {
     const entries = await listEntries();
     const mcp = await listMcpEntries();
     if (entries.length === 0 && mcp.length === 0) {
-      p.note(`Nothing yet. Try ${pc.cyan("Quick start")} from the menu, or ${pc.cyan("perezdev create")}.`, "Empty");
+      p.note(`Nothing yet. Try ${pc.cyan("perezdev create")} or ${pc.cyan("perezdev create --preset")}.`, "Empty");
       return;
     }
 

@@ -1,5 +1,7 @@
 # PerezDev Hub — TUI Redesign: Implementation Guide
 
+> Superseded for current TUI layout; see [`docs/tui-design-spec.md`](docs/tui-design-spec.md).
+
 This package contains a **clickable HTML prototype** of a redesigned PerezDev Hub
 terminal UI, plus this guide for porting it into the real **Ink (React-for-the-terminal)**
 TUI in `src/tui/`.

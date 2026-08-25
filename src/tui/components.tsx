@@ -15,24 +15,6 @@ export interface LogLine {
   cat?: LogCat;
 }
 
-/** A consistent section heading: a colored accent bar + a soft label. */
-export function SectionHeader({
-  label,
-  color = theme.accent,
-}: {
-  label: string;
-  color?: string;
-}): React.ReactElement {
-  return (
-    <Text>
-      <Text color={color}>{"▌ "}</Text>
-      <Text bold color={theme.fg2}>
-        {label.toUpperCase()}
-      </Text>
-    </Text>
-  );
-}
-
 const GLYPH: Record<"ok" | "err" | "info", [string, string]> = {
   ok: ["✔", theme.ok],
   err: ["✘", theme.bad],

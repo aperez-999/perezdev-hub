@@ -1,5 +1,7 @@
 # PerezDev Hub — Implementation Plan
 
+> Current TUI (Chat, Skills, MCP, News) is specified in [`docs/tui-design-spec.md`](docs/tui-design-spec.md). Notes below that still mention three pages are historical.
+>
 > Roadmap to make the CLI **highly executable and great for developers**: fast,
 > safe, scriptable, and pleasant in the terminal. Phased and prioritized.
 > Check items off (`[x]`) as they land; each carries a verification step.

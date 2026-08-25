@@ -8,8 +8,6 @@ import type { HomeData } from "../data.js";
 import type { ToolId } from "../../core/agent-spec.js";
 
 export type FactoryFocus = "goal" | "tools" | "generate";
-export const GEN_PRESETS = ["auto", "strict", "minimal"] as const;
-export type GenPreset = (typeof GEN_PRESETS)[number];
 
 export interface ToolChip {
   id: ToolId;
