@@ -14,6 +14,8 @@ export interface PerezRc {
   default_targets?: ToolId[];
   /** Preferred inference backend — "cloud" prefers an API key even if Ollama is up. */
   default_provider?: "local" | "cloud";
+  /** First-run AI-SDLC wizard finished (or skipped). Returning users never see it. */
+  setup_complete?: boolean;
 }
 
 const DEFAULTS: PerezRc = { last_active_tab: 1, autonomy_mode: "manual", mcp_ignored_servers: [] };
@@ -40,6 +42,7 @@ export async function loadRc(): Promise<PerezRc> {
       ...(obj.default_provider === "local" || obj.default_provider === "cloud"
         ? { default_provider: obj.default_provider }
         : {}),
+      ...(obj.setup_complete === true ? { setup_complete: true } : {}),
     };
   } catch {
     return { ...DEFAULTS };

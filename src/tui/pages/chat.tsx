@@ -23,6 +23,7 @@ export function ChatPage({
   inputActive,
   slashOpen,
   slashSel,
+  hint,
 }: {
   log: LogLine[];
   busy: boolean;
@@ -37,6 +38,7 @@ export function ChatPage({
   inputActive: boolean;
   slashOpen: boolean;
   slashSel: number;
+  hint?: string;
 }): React.ReactElement {
   const { stdout } = useStdout();
   const rows = Math.max(6, Math.min((stdout?.rows ?? 40) - 16, 24));
@@ -47,7 +49,7 @@ export function ChatPage({
   return (
     <Box flexDirection="column" flexGrow={1}>
       <Box flexDirection="column" flexGrow={1} marginTop={1}>
-        {empty && <EmptyChat />}
+        {empty && <EmptyChat hint={hint} />}
         {recent.map((l, i) => (
           <Row key={i} line={l} agentLabel={agentLabel} />
         ))}

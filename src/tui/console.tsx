@@ -22,7 +22,8 @@ import {
   type HomeData,
 } from "./data.js";
 import { slugSchema, type ToolId } from "../core/agent-spec.js";
-import { skillMetaprompt, mcpMetaprompt, parseMcpConfig } from "../core/metaprompt.js";
+import { skillMetaprompt, mcpMetaprompt, parseMcpConfig, looksLikeSkillMarkdown } from "../core/metaprompt.js";
+import { slugify } from "../core/slug.js";
 import type { Provider } from "../core/provider.js";
 import { loadRc, saveRc, type PerezRc } from "../core/rc.js";
 import {
@@ -47,9 +48,11 @@ import { isBareHelpInput, navFromData, nextPage } from "./nav.js";
 import { ModelPicker } from "./model-picker.js";
 import { throttleAppend } from "../util/throttle.js";
 import { parseLocalIntent } from "./local-intent.js";
+import { chatHint } from "./copy.js";
+import type { SetupLanding } from "./setup.js";
 
 /** The whole UI: tabbed console (Chat · Skill Builder · MCP). */
-export function Console(): React.ReactElement {
+export function Console({ landing }: { landing?: SetupLanding | null } = {}): React.ReactElement {
   const { exit } = useApp();
   const { stdin } = useStdin();
   const engineRef = useRef<Engine | null>(null);
@@ -62,7 +65,7 @@ export function Console(): React.ReactElement {
   const [mode, setMode] = useState<Mode>("normal");
   const [autonomy, setAutonomy] = useState<Autonomy>("manual");
   const [thinking, setThinking] = useState<Thinking>("medium");
-  const [page, setPage] = useState<Page>(1);
+  const [page, setPage] = useState<Page>(landing?.pack === "generate" ? 2 : 1);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [ignored, setIgnored] = useState<string[]>([]);
   const [help, setHelp] = useState(false);
@@ -74,7 +77,9 @@ export function Console(): React.ReactElement {
   // F2 Skill Builder form state.
   const [goal, setGoal] = useState("");
   const [factoryFocus, setFactoryFocus] = useState<FactoryFocus>("goal");
-  const [factoryTools, setFactoryTools] = useState<Set<ToolId> | null>(null);
+  const [factoryTools, setFactoryTools] = useState<Set<ToolId> | null>(
+    landing?.targets?.length ? new Set(landing.targets) : null,
+  );
   const [toolIdx, setToolIdx] = useState(0);
   const [preview, setPreview] = useState("");
 
@@ -86,7 +91,13 @@ export function Console(): React.ReactElement {
   const [sel4, setSel4] = useState(0);
 
   const rcLoaded = useRef(false);
-  const prefsRef = useRef<{ default_targets?: PerezRc["default_targets"]; default_provider?: PerezRc["default_provider"] }>({});
+  const prefsRef = useRef<{
+    default_targets?: PerezRc["default_targets"];
+    default_provider?: PerezRc["default_provider"];
+    setup_complete?: boolean;
+  }>({});
+  const [emptyHint, setEmptyHint] = useState(() => chatHint(landing?.targets));
+  const seededLanding = useRef(false);
 
   const push = (kind: LogKind, text: string, cat?: LogCat) => setLog((l) => [...l, { kind, text, cat }].slice(-200));
 
@@ -111,10 +122,25 @@ export function Console(): React.ReactElement {
       setPage(rc.last_active_tab);
       setAutonomy(rc.autonomy_mode);
       setIgnored(rc.mcp_ignored_servers);
-      prefsRef.current = { default_targets: rc.default_targets, default_provider: rc.default_provider };
+      prefsRef.current = {
+        default_targets: rc.default_targets,
+        default_provider: rc.default_provider,
+        setup_complete: rc.setup_complete,
+      };
+      setEmptyHint(chatHint(rc.default_targets ?? landing?.targets));
+      const dt = rc.default_targets;
+      if (dt?.length) {
+        setFactoryTools((cur) => cur ?? new Set(dt));
+      }
       rcLoaded.current = true;
     });
   }, []);
+
+  useEffect(() => {
+    if (seededLanding.current || !landing?.message) return;
+    seededLanding.current = true;
+    push("info", landing.message);
+  }, [landing]);
 
   // Persist preferences whenever they change (after the initial load). Best-effort.
   useEffect(() => {
@@ -444,7 +470,11 @@ export function Console(): React.ReactElement {
       else setPartial("");
       push("info", "⠋ Querying active AI provider to generate custom skill instructions…", cat);
       try {
-        body = (await callProvider(skillMetaprompt(desc), stream.push, undefined, "write")).trim() || undefined;
+        const raw = (await callProvider(skillMetaprompt(desc, home?.scan), stream.push, undefined, "write")).trim();
+        if (raw && looksLikeSkillMarkdown(raw)) body = raw;
+        else if (raw) {
+          push("info", "model output didn't match the skill template — using the hub template.", cat);
+        }
       } catch (e) {
         push("err", e instanceof Error ? e.message : String(e), cat);
       }
@@ -891,6 +921,7 @@ export function Console(): React.ReactElement {
               slashSel={slashSel}
               autonomy={autonomy}
               agentLabel={(provider?.label ?? "model").split(":")[0] || "model"}
+              hint={emptyHint}
             />
           )}
           {page === 2 && (
@@ -924,19 +955,6 @@ export function Console(): React.ReactElement {
         </>
       )}
     </Shell>
-  );
-}
-
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .split("-")
-      .slice(0, 3)
-      .join("-")
-      .slice(0, 40) || "agent"
   );
 }
 
