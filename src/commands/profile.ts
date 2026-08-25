@@ -47,15 +47,22 @@ function assertPublicUrl(url: URL): void {
   }
 }
 
+export const PROFILE_FETCH_MAX_BYTES = 512_000;
+const PROFILE_FETCH_MS = 8_000;
+
 /** Resolve a profile reference (http(s) URL or local file) to its text. */
-async function readRef(ref: string): Promise<string> {
+export async function readRef(ref: string): Promise<string> {
   if (/^https?:\/\//.test(ref)) {
     const url = new URL(ref);
     assertPublicUrl(url);
     // No redirect following: a public URL could otherwise 30x to a private host.
-    const res = await fetch(url, { redirect: "error" });
+    const res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(PROFILE_FETCH_MS) });
     if (!res.ok) throw new Error(`fetch failed (${res.status}) for ${ref}`);
-    return res.text();
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength > PROFILE_FETCH_MAX_BYTES) {
+      throw new Error(`refused: profile larger than ${PROFILE_FETCH_MAX_BYTES} bytes`);
+    }
+    return new TextDecoder().decode(buf);
   }
   const text = await readIfExists(ref);
   if (text === null) throw new Error(`file not found: ${ref}`);

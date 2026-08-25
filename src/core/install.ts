@@ -1,7 +1,7 @@
 import { getAdapter } from "../adapters/registry.js";
 import type { PlannedFile } from "../adapters/types.js";
 import { atomicWrite, backup, readIfExists } from "../util/fs-safe.js";
-import { upsertAgent } from "./lockfile.js";
+import { upsertAgents } from "./lockfile.js";
 import type { AgentSpec } from "./agent-spec.js";
 import { assertSafeMcpLaunch } from "./mcp-allow.js";
 
@@ -37,19 +37,28 @@ export async function writeFiles(planned: PlannedFile[]): Promise<PlannedFile[]>
 }
 
 /**
- * Install a spec end-to-end: write its files to every target tool, then record
- * it in the lockfile. The single path every command (create, import, preset,
- * update) routes through.
+ * Install specs end-to-end: plan all, write all, verify, then one lockfile upsert.
+ * The single path every command (create, import, preset, Superpowers pack) routes through.
  */
-export async function installSpec(spec: AgentSpec, now: string): Promise<PlannedFile[]> {
-  const planned = await planSpec(spec);
-  if (planned.length === 0) {
-    throw new Error(`no target tools to install '${spec.name}' into`);
+export async function installSpecs(specs: AgentSpec[], now: string): Promise<PlannedFile[]> {
+  if (specs.length === 0) return [];
+  const planned: PlannedFile[] = [];
+  for (const spec of specs) {
+    const files = await planSpec(spec);
+    if (files.length === 0) {
+      throw new Error(`no target tools to install '${spec.name}' into`);
+    }
+    planned.push(...files);
   }
   const written = await writeFiles(planned);
   await verifyWritten(written);
-  await upsertAgent(spec, now);
+  await upsertAgents(specs, now);
   return written;
+}
+
+/** Install one spec — same pipeline as {@link installSpecs}. */
+export async function installSpec(spec: AgentSpec, now: string): Promise<PlannedFile[]> {
+  return installSpecs([spec], now);
 }
 
 /** Bump the patch component of a semver-ish version string (x.y.z). */

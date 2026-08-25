@@ -44,6 +44,28 @@ describe("install core", () => {
     expect(await readFile(join(home, ".codex", "prompts", "doc-writer.md"), "utf8")).toContain("doc-writer");
     expect((await getAgentSpec("doc-writer"))?.targets).toEqual(["claude-code", "codex"]);
   });
+
+  it("installSpecs writes every spec then records them together", async () => {
+    const { generateSpec } = await import("../src/core/generate.js");
+    const { installSpecs } = await import("../src/core/install.js");
+    const { listEntries } = await import("../src/core/lockfile.js");
+
+    const specs = ["alpha-writer", "beta-writer"].map((name) =>
+      generateSpec({
+        name,
+        role: "a writer",
+        description: `writing ${name} docs for the project`,
+        behaviors: [],
+        allowedTools: [],
+        mcpDependencies: [],
+        targets: ["claude-code"],
+      }),
+    );
+    const written = await installSpecs(specs, "2026-06-12T00:00:00.000Z");
+    expect(written.length).toBe(2);
+    const names = (await listEntries()).map((e) => e.spec.name).sort();
+    expect(names).toEqual(["alpha-writer", "beta-writer"]);
+  });
 });
 
 describe("presets", () => {

@@ -41,6 +41,19 @@ describe("lockfile", () => {
     expect(await getAgentSpec("agent-one")).toBeNull();
   });
 
+  it("upserts many agents with one lockfile write", async () => {
+    const { upsertAgents, listEntries } = await import("../src/core/lockfile.js");
+    const two = parseAgentSpec({
+      name: "agent-two",
+      description: "use when testing the lockfile batch",
+      role: "a tester",
+      instructions: "Test two.",
+      targets: ["cursor"],
+    });
+    await upsertAgents([sample(), two], "2026-01-02T00:00:00.000Z");
+    expect((await listEntries()).map((e) => e.spec.name).sort()).toEqual(["agent-one", "agent-two"]);
+  });
+
   it("returns an empty lockfile when none exists", async () => {
     const { listEntries } = await import("../src/core/lockfile.js");
     expect(await listEntries()).toEqual([]);

@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { buildProfile, parseProfile, profileToServer } from "../src/core/profile.js";
 import { parseAgentSpec } from "../src/core/agent-spec.js";
+import { PROFILE_FETCH_MAX_BYTES, readRef } from "../src/commands/profile.js";
 import type { LockEntry, McpEntry } from "../src/core/lockfile.js";
 
 const spec = parseAgentSpec({
@@ -68,5 +69,26 @@ describe("profileToServer", () => {
     expect(server.command).toBe("npx");
     expect(server.env).toEqual({ TOKEN: "t" });
     expect(server.tags).toContain("profile");
+  });
+});
+
+describe("readRef", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("refuses an oversized HTTP profile", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response(new Uint8Array(PROFILE_FETCH_MAX_BYTES + 1), { status: 200 }),
+    );
+    await expect(readRef("https://example.com/p.json")).rejects.toThrow(/larger than/);
+  });
+
+  it("still refuses a private host before fetching", async () => {
+    const spy = vi.fn();
+    vi.stubGlobal("fetch", spy);
+    await expect(readRef("http://127.0.0.1/p.json")).rejects.toThrow(/local\/private/);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

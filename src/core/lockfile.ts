@@ -53,8 +53,14 @@ export async function writeLock(lock: Lockfile): Promise<void> {
 
 /** Insert or update an agent entry. `now` is injected for determinism. */
 export async function upsertAgent(spec: AgentSpec, now: string): Promise<void> {
+  await upsertAgents([spec], now);
+}
+
+/** Insert or update many agents with a single lockfile read/write. */
+export async function upsertAgents(specs: AgentSpec[], now: string): Promise<void> {
+  if (specs.length === 0) return;
   const lock = await readLock();
-  lock.agents[spec.name] = { spec, installedAt: now };
+  for (const spec of specs) lock.agents[spec.name] = { spec, installedAt: now };
   await writeLock(lock);
 }
 

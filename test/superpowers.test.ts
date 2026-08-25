@@ -7,6 +7,7 @@ import {
   parseSkillMarkdown,
   planSuperpowersPack,
   skillToSpec,
+  SUPERPOWERS_COMMIT,
 } from "../src/core/superpowers.js";
 
 const SAMPLE = `---
@@ -34,8 +35,10 @@ describe("parseSkillMarkdown", () => {
 
 describe("fetchSuperpowersSkills", () => {
   it("parses raw SKILL.md responses from the fetcher", async () => {
+    const urls: string[] = [];
     const fetcher = (async (input: string | URL) => {
       const url = String(input);
+      urls.push(url);
       const id = url.split("/skills/")[1]?.split("/")[0] ?? "skill";
       return new Response(
         `---\nname: ${id}\ndescription: Superpowers skill for ${id} workflows in an SDLC\n---\n\n${"# Body\n\nDo the work with care.\n".repeat(5)}`,
@@ -46,6 +49,15 @@ describe("fetchSuperpowersSkills", () => {
     expect(error).toBeUndefined();
     expect(skills.length).toBeGreaterThan(5);
     expect(skills.some((s) => s.name === "using-superpowers")).toBe(true);
+    expect(urls.every((u) => u.includes(SUPERPOWERS_COMMIT))).toBe(true);
+    expect(urls.some((u) => u.includes("/main/"))).toBe(false);
+  });
+
+  it("skips a SKILL.md that exceeds the size cap", async () => {
+    const fetcher = (async () => new Response(new Uint8Array(200_001), { status: 200 })) as typeof fetch;
+    const { skills, error } = await fetchSuperpowersSkills(fetcher);
+    expect(skills).toEqual([]);
+    expect(error).toMatch(/network/);
   });
 
   it("returns an error when every fetch fails", async () => {

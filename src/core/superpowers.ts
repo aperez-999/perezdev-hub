@@ -1,10 +1,14 @@
 import { parseAgentSpec, slugSchema, type AgentSpec, type ToolId } from "./agent-spec.js";
-import { installSpec, planSpec } from "./install.js";
+import { installSpecs, planSpec } from "./install.js";
 import type { PlannedFile } from "../adapters/types.js";
 import { slugify } from "./slug.js";
 
 const UA =
   "Mozilla/5.0 (compatible; perezdev-hub/0.2; +https://github.com/aperez-999/perezdev-hub)";
+
+/** Pinned obra/superpowers commit — mutable `main` is a prompt-injection supply chain. */
+export const SUPERPOWERS_COMMIT = "b36e0829c6d0140e93cfef2ca599b1b07d4a7797";
+const MAX_SKILL_BYTES = 200_000;
 
 /** Known skill folders in obra/superpowers — used when the GitHub API is unavailable. */
 export const SUPERPOWERS_SKILL_IDS = [
@@ -25,7 +29,7 @@ export const SUPERPOWERS_SKILL_IDS = [
 ] as const;
 
 const RAW = (id: string): string =>
-  `https://raw.githubusercontent.com/obra/superpowers/main/skills/${id}/SKILL.md`;
+  `https://raw.githubusercontent.com/obra/superpowers/${SUPERPOWERS_COMMIT}/skills/${id}/SKILL.md`;
 
 export interface SuperpowersSkill {
   name: string;
@@ -68,7 +72,9 @@ export async function fetchSuperpowersSkills(
           headers: { "user-agent": UA },
         });
         if (!res.ok) return null;
-        return parseSkillMarkdown(await res.text(), id);
+        const buf = new Uint8Array(await res.arrayBuffer());
+        if (buf.byteLength > MAX_SKILL_BYTES) return null;
+        return parseSkillMarkdown(new TextDecoder().decode(buf), id);
       } catch {
         return null;
       }
@@ -102,7 +108,8 @@ export async function planSuperpowersPack(skills: SuperpowersSkill[], targets: T
 export async function installSuperpowersPack(skills: SuperpowersSkill[], targets: ToolId[]): Promise<PlannedFile[]> {
   if (targets.length === 0) return [];
   const now = new Date().toISOString();
-  const written: PlannedFile[] = [];
-  for (const skill of skills) written.push(...(await installSpec(skillToSpec(skill, targets), now)));
-  return written;
+  return installSpecs(
+    skills.map((skill) => skillToSpec(skill, targets)),
+    now,
+  );
 }
