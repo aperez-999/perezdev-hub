@@ -226,7 +226,7 @@ describe("Console TUI", () => {
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""));
     await wait(800);
     stdin.write(SHIFT_LEFT); // page 1 → wrap to page 4 News
-    await until(() => /AI tooling feed/.test(lastFrame() ?? ""), 4000);
+    await until(() => /MCP servers for local/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 4 → wrap to page 1
     await until(() => /PEREZDEV HUB/.test(lastFrame() ?? ""), 4000);
     stdin.write(SHIFT_RIGHT); // page 1 → page 2

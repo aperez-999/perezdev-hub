@@ -357,7 +357,7 @@ function MissingStep({ missing }: { missing: ToolPresence[] }): React.ReactEleme
     <Box flexDirection="column">
       <Text color={theme.dim}>Not installed — paste to install. PerezDev will not run this.</Text>
       {missing.map((t) => (
-        <Box key={t.id} flexDirection="column" marginTop={0}>
+        <Box key={t.id} flexDirection="column" marginTop={1}>
           <Text color={theme.fg}>{t.name}</Text>
           <Text color={theme.violet}>{toolInstallCommand(t.id)}</Text>
         </Box>

@@ -86,7 +86,7 @@ export function FactoryPage({
             </Box>
           </Box>
 
-          <Box marginTop={1}>
+          <Box marginTop={2}>
             {focus === "generate" ? (
               <Text backgroundColor={theme.violet} color={theme.ink} bold>
                 {" Generate "}

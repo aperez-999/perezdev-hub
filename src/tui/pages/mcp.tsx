@@ -136,7 +136,7 @@ export function McpPage({
                   <Text color={theme.muted}>nothing new</Text>
                 ) : (
                   panel.items.map((r) => (
-                    <Box key={r.id} flexDirection="column" marginTop={1}>
+                    <Box key={r.id} flexDirection="column">
                       <Text color={theme.accent} bold>
                         {`+ ${r.id}`}
                       </Text>

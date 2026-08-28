@@ -612,7 +612,7 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
     const intent = parseLocalIntent(text);
     if (intent.kind === "auto") {
       setAutonomy("auto");
-      push("ok", "local auto on — writes skip the Y/N gate. Ctrl+A toggles.", "chat");
+      push("ok", "local auto on — skill writes skip Y/N; custom MCP and installs still confirm. Ctrl+A toggles.", "chat");
       return;
     }
     if (intent.kind === "mcp") {
@@ -925,7 +925,6 @@ export function Console({ landing }: { landing?: SetupLanding | null } = {}): Re
               inputActive={page === 1 && !confirm && !help}
               slashOpen={slashOpen}
               slashSel={slashSel}
-              autonomy={autonomy}
               agentLabel={(provider?.label ?? "model").split(":")[0] || "model"}
               hint={emptyHint}
             />

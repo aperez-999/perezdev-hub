@@ -4,7 +4,7 @@ import Spinner from "ink-spinner";
 import { theme } from "../theme.js";
 import { loadNews, type NewsItem, type NewsResult } from "../../core/news.js";
 
-/** Page 4 — live headlines about MCP, skills, models, and languages. */
+/** Page 4 — HN headlines for Claude Code, Ollama, MCP, and Cursor. */
 export function NewsPage({ sel }: { sel: number }): React.ReactElement {
   const [result, setResult] = useState<NewsResult | null>(null);
 
@@ -29,9 +29,8 @@ export function NewsPage({ sel }: { sel: number }): React.ReactElement {
 
   return (
     <Box flexDirection="column" flexGrow={1} marginTop={1}>
-      <Text color={theme.dim}>AI tooling feed</Text>
       {result === null && (
-        <Box marginTop={1}>
+        <Box>
           <Text color={theme.accent}>
             <Spinner type="dots" />
           </Text>
@@ -45,7 +44,7 @@ export function NewsPage({ sel }: { sel: number }): React.ReactElement {
       {list.map((it, i) => {
         const on = i === idx;
         return (
-          <Box key={`${it.source}-${it.title}`} marginTop={i === 0 ? 1 : 0}>
+          <Box key={`${it.source}-${it.title}`}>
             <Box width={2} flexShrink={0}>
               <Text color={on ? theme.accent : theme.faint}>{on ? "›" : " "}</Text>
             </Box>

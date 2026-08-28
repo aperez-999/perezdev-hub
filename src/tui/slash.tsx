@@ -9,7 +9,7 @@ export function SlashMenu({ query, sel }: { query: string; sel: number }): React
   const items = filterCommands(query);
   if (items.length === 0) return null;
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={theme.line} paddingX={1} marginX={2}>
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.line} paddingX={1}>
       {items.slice(0, 8).map((c, i) => (
         <Box key={c.name}>
           <Box width={26} flexShrink={0}>

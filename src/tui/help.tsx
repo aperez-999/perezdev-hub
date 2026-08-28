@@ -19,11 +19,8 @@ const KEYS: [string, string][] = [
 export function HelpOverlay(): React.ReactElement {
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text>
-        <Text color={theme.violet}>{"▌ "}</Text>
-        <Text bold color={theme.fg2}>
-          HELP
-        </Text>
+      <Text bold color={theme.fg2}>
+        Help
       </Text>
       <Box marginTop={1}>
         <Box flexDirection="column" width={42} flexShrink={0}>

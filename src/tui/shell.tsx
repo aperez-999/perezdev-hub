@@ -54,7 +54,7 @@ export function Shell({
         </Box>
       </Box>
 
-      <Box flexGrow={1} flexDirection="column" paddingX={1}>
+      <Box flexGrow={1} flexDirection="column" paddingX={2}>
         {children}
       </Box>
 

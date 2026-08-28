@@ -16,7 +16,7 @@ export interface StatusProps {
 export function StatusBar({ mode, autonomy, thinking }: StatusProps): React.ReactElement {
   const think = thinking === "medium" ? "med" : thinking;
   return (
-    <Box paddingX={1}>
+    <Box paddingX={2}>
       <Text color={mode === "plan" ? theme.violet : theme.accent} bold>
         {mode === "plan" ? "PLANNING" : "NORMAL"}
       </Text>

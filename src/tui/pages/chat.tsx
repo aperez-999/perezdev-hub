@@ -3,7 +3,7 @@ import { Box, Text, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { theme } from "../theme.js";
-import { Row, type Autonomy, type LogLine, type Mode } from "../components.js";
+import { Row, type LogLine, type Mode } from "../components.js";
 import { SlashMenu } from "../slash.js";
 import { OFFLINE_HINT, PROMPT_PLACEHOLDER } from "../copy.js";
 import { EmptyChat } from "../empty-chat.js";
@@ -15,7 +15,6 @@ export function ChatPage({
   partial,
   mode,
   online,
-  autonomy,
   agentLabel,
   input,
   setInput,
@@ -30,7 +29,6 @@ export function ChatPage({
   partial: string;
   mode: Mode;
   online: boolean;
-  autonomy: Autonomy;
   agentLabel: string;
   input: string;
   setInput: (s: string) => void;
@@ -69,7 +67,7 @@ export function ChatPage({
       </Box>
 
       {!online && (
-        <Box borderStyle="round" borderColor={theme.warn} paddingX={1} marginX={2} marginTop={1}>
+        <Box borderStyle="round" borderColor={theme.warn} paddingX={1} marginTop={1}>
           <Text color={theme.warn} wrap="wrap">
             {OFFLINE_HINT}
           </Text>
@@ -89,9 +87,6 @@ export function ChatPage({
             placeholder={PROMPT_PLACEHOLDER}
           />
         </Box>
-        <Text color={autonomy === "auto" ? theme.ok : theme.muted} bold={autonomy === "auto"}>
-          {autonomy === "auto" ? " AUTO" : " manual"}
-        </Text>
       </Box>
     </Box>
   );
