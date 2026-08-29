@@ -29,9 +29,9 @@ describe("promptModel", () => {
     const sent: Record<string, unknown>[] = [];
     await promptModel(
       {
-        send: async (_op, params) => {
-          sent.push(params);
-          return { response: "ok" };
+        send: async <T = unknown>(_op: string, params?: Record<string, unknown>) => {
+          sent.push(params ?? {});
+          return { response: "ok" } as T;
         },
       },
       "llama3",

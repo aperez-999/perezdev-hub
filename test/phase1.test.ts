@@ -78,7 +78,7 @@ describe("target resolution", () => {
 });
 
 describe("provider preference", () => {
-  const up = { available: true, normal: "qwen", thinking: "qwen" };
+  const up = { available: true, models: ["qwen"], normal: "qwen", thinking: "qwen" };
   it("defaults to local when Ollama is up", () => {
     process.env.ANTHROPIC_API_KEY = "x";
     expect(resolveProvider(up).kind).toBe("local");
