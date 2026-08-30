@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security
+    url: https://github.com/aperez-999/perezdev-hub/blob/main/SECURITY.md
+    about: Report a vulnerability privately — do not file a public issue.

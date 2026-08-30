@@ -1,0 +1,19 @@
+name: Feature
+description: A change that makes portable agent config more useful
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: job
+    attributes:
+      label: Job to be done
+      placeholder: When I … I want to … so I can …
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The smallest change that would help. perezdev stays a local CLI — no hosted service or telemetry.
+    validations:
+      required: true

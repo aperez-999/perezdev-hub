@@ -1,0 +1,41 @@
+name: Bug
+description: Something is wrong, broken, or unsafe
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `perezdev --version`
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Project (inside a repo)
+        - User (-g)
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: perezdev create --preset code-reviewer -t cursor
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Expected vs actual. `--dry-run` or `doctor --json` output helps.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and Node version
+      placeholder: macOS 26, Node 22.11
