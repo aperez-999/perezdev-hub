@@ -1,15 +1,15 @@
 {
   "name": "perezdev-hub",
-  "version": "0.2.0",
-  "description": "PerezDev Hub — your AI dev workflow hub: generate custom agents, install curated stacks, and manage skills/MCP servers across Claude Code, Cursor, Copilot, Codex.",
+  "version": "0.3.0",
+  "description": "Write your AI agent setup once — skills, rules, and MCP servers — for Claude Code, Codex, Cursor, Copilot, Cline, Windsurf, and Roo, and catch drift in CI.",
   "type": "module",
   "bin": {
     "perezdev": "dist/index.js",
-    "pdh": "dist/index.js"
+    "pdh": "dist/index.js",
+    "perezdev-hub": "dist/index.js"
   },
   "files": [
-    "dist",
-    "python"
+    "dist"
   ],
   "engines": {
     "node": ">=20"
@@ -19,22 +19,27 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "smoke": "tsx scripts/smoke-tui.ts",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "keywords": [
     "ai",
-    "agent",
-    "cli",
-    "claude",
+    "agents",
+    "agent-skills",
+    "skill-md",
+    "mcp",
+    "claude-code",
+    "codex",
     "cursor",
     "copilot",
-    "codex",
-    "mcp",
-    "skills",
-    "tui",
-    "developer-tools"
+    "cline",
+    "windsurf",
+    "roo-code",
+    "agents-md",
+    "cli",
+    "developer-tools",
+    "lockfile"
   ],
   "author": "Alejandro Perez",
   "license": "MIT",
@@ -49,13 +54,9 @@
   "dependencies": {
     "@clack/prompts": "^0.7.0",
     "commander": "^12.1.0",
-    "execa": "^9.5.1",
-    "ink": "^5.1.0",
-    "ink-gradient": "^3.0.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
     "picocolors": "^1.1.1",
-    "react": "^18.3.1",
+    "smol-toml": "1.9.1",
+    "yaml": "2.9.1",
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
@@ -63,8 +64,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
-    "@types/react": "^18.3.12",
-    "ink-testing-library": "^4.0.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
