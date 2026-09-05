@@ -15,11 +15,6 @@ export function perezdevDir(): string {
   return join(base, "perezdev");
 }
 
-/** Path to the lockfile recording what the hub manages. */
-export function lockfilePath(): string {
-  return join(perezdevDir(), "perezdev-lock.json");
-}
-
 /** Is LLM-assisted generation available (API key present)? */
 export function hasAnthropicKey(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
