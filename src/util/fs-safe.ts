@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile, stat, copyFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile, stat, copyFile, unlink, rmdir, readdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { perezdevDir } from "../core/config.js";
 
@@ -24,46 +24,15 @@ export async function readIfExists(path: string): Promise<string | null> {
 
 /**
  * Write a file atomically: write to a temp sibling then rename into place.
- * Creates parent directories as needed. Prevents half-written config files.
+ * Creates parent directories as needed and keeps an existing file's mode, so a
+ * 0600 config (e.g. ~/.claude.json) never becomes world-readable.
  */
 export async function atomicWrite(path: string, contents: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
+  const mode = await stat(path).then((s) => s.mode & 0o777, () => undefined);
   const tmp = `${path}.perezdev-tmp-${process.pid}`;
-  await writeFile(tmp, contents, "utf8");
+  await writeFile(tmp, contents, { encoding: "utf8", mode });
   await rename(tmp, path);
-}
-
-/** Current and legacy (former project name) sidecar backup suffixes. */
-const BACKUP_SUFFIX = ".perezdev.bak";
-const LEGACY_BACKUP_SUFFIX = ".inspo.bak";
-
-/**
- * Back up a file to `<path>.perezdev.bak` if it exists and no backup exists yet.
- * Returns the backup path if one was created, else null.
- */
-export async function backup(path: string): Promise<string | null> {
-  if (!(await exists(path))) return null;
-  const bak = `${path}${BACKUP_SUFFIX}`;
-  const legacy = `${path}${LEGACY_BACKUP_SUFFIX}`;
-  if (await exists(bak)) return bak;
-  if (await exists(legacy)) return legacy;
-  await copyFile(path, bak);
-  return bak;
-}
-
-/**
- * Restore a sidecar backup over the original, removing the backup. Recognizes
- * both the current and legacy backup suffixes. Returns true if one was restored.
- */
-export async function restoreBackup(path: string): Promise<boolean> {
-  for (const bak of [`${path}${BACKUP_SUFFIX}`, `${path}${LEGACY_BACKUP_SUFFIX}`]) {
-    if (await exists(bak)) {
-      await copyFile(bak, path);
-      await unlink(bak);
-      return true;
-    }
-  }
-  return false;
 }
 
 /** Remove a file if it exists. No-op otherwise. */
@@ -71,6 +40,17 @@ export async function removeIfExists(path: string): Promise<boolean> {
   if (!(await exists(path))) return false;
   await unlink(path);
   return true;
+}
+
+/** Remove a directory only if it is empty. Returns true if removed. */
+export async function removeDirIfEmpty(path: string): Promise<boolean> {
+  try {
+    if ((await readdir(path)).length > 0) return false;
+    await rmdir(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Copy a file to a timestamped backup in the app cache. Returns the backup path. */
@@ -102,13 +82,15 @@ export async function atomicWriteValidated(path: string, contents: string, valid
  */
 export async function withRollback<T>(paths: string[], stamp: string, fn: () => Promise<T>): Promise<T> {
   const backups = new Map<string, string | null>();
-  for (const p of paths) backups.set(p, await cacheBackup(p, stamp));
+  for (const p of new Set(paths)) backups.set(p, await cacheBackup(p, stamp));
   try {
     return await fn();
   } catch (err) {
     for (const [p, bak] of backups) {
-      if (bak) await copyFile(bak, p);
-      else await removeIfExists(p);
+      if (bak) {
+        await mkdir(dirname(p), { recursive: true });
+        await copyFile(bak, p);
+      } else await removeIfExists(p);
     }
     throw err;
   }
@@ -138,29 +120,6 @@ export function previewDiff(oldText: string | null, newText: string): DiffLine[]
       if (o !== undefined) out.push({ type: "remove", text: o });
       if (n !== undefined) out.push({ type: "add", text: n });
     }
-  }
-  return out;
-}
-
-/** A surgical search/replace edit: `find` must occur exactly once in the file. */
-export interface Edit {
-  find: string;
-  replace: string;
-}
-
-/**
- * Apply search/replace edits to `text`, returning the new content. Pure — the
- * caller writes it (e.g. under withRollback). Throws if any `find` is missing or
- * occurs more than once, so an ambiguous patch never silently mis-applies.
- */
-export function applyEdits(text: string, edits: Edit[]): string {
-  let out = text;
-  for (const [i, edit] of edits.entries()) {
-    if (!edit.find) throw new Error(`edit ${i + 1}: empty 'find'`);
-    const count = out.split(edit.find).length - 1;
-    if (count === 0) throw new Error(`edit ${i + 1}: 'find' snippet not present in the file`);
-    if (count > 1) throw new Error(`edit ${i + 1}: 'find' snippet is ambiguous (${count} matches) — needs more context`);
-    out = out.replace(edit.find, edit.replace);
   }
   return out;
 }

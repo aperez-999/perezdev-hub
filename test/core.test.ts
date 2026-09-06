@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, readFile, writeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { safeParseAgentSpec, parseAgentSpec } from "../src/core/agent-spec.js";
 import { templateInstructions, generateSpec, type GenerateInput } from "../src/core/generate.js";
-import { atomicWrite, backup, restoreBackup, previewDiff, readIfExists } from "../src/util/fs-safe.js";
+import { atomicWrite, previewDiff } from "../src/util/fs-safe.js";
 
 const baseInput: GenerateInput = {
   name: "code-reviewer",
@@ -69,15 +69,14 @@ describe("generate", () => {
 
   it("generateSpec falls back to template without override", () => {
     const spec = generateSpec(baseInput);
-    expect(spec.instructions).toContain("## Responsibilities");
+    expect(spec.instructions).toContain("## Workflow");
   });
 
-  it("seeds a responsibility from the purpose when no behaviors are given", () => {
+  it("doesn't repeat the description — the frontmatter already carries it", () => {
     const body = templateInstructions({ ...baseInput, behaviors: [] });
-    expect(body).toContain("## Responsibilities");
-    // Capitalized purpose becomes the seed responsibility bullet.
-    expect(body).toContain("- Reviewing pull requests for security issues.");
-    expect(body).toContain("## When to use");
+    expect(body).not.toMatch(/reviewing pull requests for security issues/i);
+    expect(body).toContain("## Focus");
+    expect(body).toContain("## Done when");
   });
 });
 
@@ -96,16 +95,11 @@ describe("fs-safe", () => {
     expect(await readFile(f, "utf8")).toBe("hello");
   });
 
-  it("backup then restore round-trips", async () => {
-    const f = join(dir, "f.txt");
-    await writeFile(f, "original");
-    const bak = await backup(f);
-    expect(bak).toBe(`${f}.perezdev.bak`);
-    await atomicWrite(f, "modified");
-    expect(await readFile(f, "utf8")).toBe("modified");
-    expect(await restoreBackup(f)).toBe(true);
-    expect(await readFile(f, "utf8")).toBe("original");
-    expect(await readIfExists(`${f}.perezdev.bak`)).toBeNull();
+  it("atomicWrite keeps an existing file's permissions", async () => {
+    const f = join(dir, "secret.json");
+    await writeFile(f, "{}", { mode: 0o600 });
+    await atomicWrite(f, '{"a":1}');
+    expect((await stat(f)).mode & 0o777).toBe(0o600);
   });
 
   it("previewDiff marks added lines for a new file", () => {
