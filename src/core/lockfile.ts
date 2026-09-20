@@ -1,22 +1,22 @@
 import { z } from "zod";
 import { agentSpecSchema, mcpDependencySchema, TOOL_IDS, type AgentSpec, type McpDependency, type ToolId } from "./agent-spec.js";
-import { lockfilePath } from "./config.js";
+import { lockfilePath, type Scope } from "./scope.js";
 import { atomicWrite, readIfExists } from "../util/fs-safe.js";
 
 /**
- * The lockfile records every agent perezdev has generated/installed and where.
- * It is the source of truth for `list`, `update`, and `remove` (the
- * "npm-for-agents" angle). Lives at ~/.config/perezdev/perezdev-lock.json.
+ * The lockfile records every agent and MCP server perezdev manages in a scope,
+ * with the full spec, so any tool's files can be regenerated from it. In a
+ * project it lives at the repo root and is meant to be committed.
  */
 
 const lockEntrySchema = z.object({
   spec: agentSpecSchema,
-  /** ISO timestamp recorded by the caller (kept out of core for determinism). */
+  /** When this spec last changed (ISO). Re-applying an unchanged spec keeps it. */
   installedAt: z.string(),
 });
 export type LockEntry = z.infer<typeof lockEntrySchema>;
 
-/** A standalone MCP server installed by Discover/Stacks (no owning agent). */
+/** A standalone MCP server (no owning agent). */
 const mcpEntrySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -30,91 +30,112 @@ const lockfileSchema = z.object({
   lockfileVersion: z.literal(1).default(1),
   agents: z.record(lockEntrySchema).default({}),
   mcpServers: z.record(mcpEntrySchema).default({}),
+  /** Keep a generated Commands section in AGENTS.md (and link CLAUDE.md to it). Project scope. */
+  agentsMd: z.boolean().optional(),
 });
 export type Lockfile = z.infer<typeof lockfileSchema>;
 
 const EMPTY: Lockfile = { lockfileVersion: 1, agents: {}, mcpServers: {} };
 
-/** Read and validate the lockfile, returning an empty one if absent/corrupt. */
-export async function readLock(): Promise<Lockfile> {
-  const raw = await readIfExists(lockfilePath());
+/**
+ * Read and validate the lockfile. Absent → empty. Present but unreadable is an
+ * error: treating it as empty would let the next write erase every entry.
+ */
+export async function readLock(scope: Scope): Promise<Lockfile> {
+  const path = lockfilePath(scope);
+  const raw = await readIfExists(path);
   if (!raw) return structuredClone(EMPTY);
+  let data: unknown;
   try {
-    return lockfileSchema.parse(JSON.parse(raw));
+    data = JSON.parse(raw);
   } catch {
-    return structuredClone(EMPTY);
+    throw new Error(`${path} is not valid JSON — resolve it (merge conflict?) before running perezdev`);
   }
+  const parsed = lockfileSchema.safeParse(data);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new Error(`${path} is invalid: ${issue ? `${issue.path.join(".")} — ${issue.message}` : "schema mismatch"}`);
+  }
+  return parsed.data;
 }
 
-/** Write the lockfile atomically. */
-export async function writeLock(lock: Lockfile): Promise<void> {
-  await atomicWrite(lockfilePath(), JSON.stringify(lock, null, 2) + "\n");
+const sortKeys = <T>(rec: Record<string, T>): Record<string, T> =>
+  Object.fromEntries(Object.entries(rec).sort(([a], [b]) => a.localeCompare(b)));
+
+/** Write the lockfile atomically, keys sorted so committed diffs stay minimal. */
+export async function writeLock(scope: Scope, lock: Lockfile): Promise<void> {
+  const out: Lockfile = {
+    lockfileVersion: 1,
+    agents: sortKeys(lock.agents),
+    mcpServers: sortKeys(lock.mcpServers),
+    ...(lock.agentsMd ? { agentsMd: true } : {}),
+  };
+  await atomicWrite(lockfilePath(scope), JSON.stringify(out, null, 2) + "\n");
 }
 
-/** Insert or update an agent entry. `now` is injected for determinism. */
-export async function upsertAgent(spec: AgentSpec, now: string): Promise<void> {
-  await upsertAgents([spec], now);
-}
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Insert or update many agents with a single lockfile read/write. */
-export async function upsertAgents(specs: AgentSpec[], now: string): Promise<void> {
+export async function upsertAgents(scope: Scope, specs: AgentSpec[], now: string): Promise<void> {
   if (specs.length === 0) return;
-  const lock = await readLock();
-  for (const spec of specs) lock.agents[spec.name] = { spec, installedAt: now };
-  await writeLock(lock);
+  const lock = await readLock(scope);
+  for (const spec of specs) {
+    const prev = lock.agents[spec.name];
+    lock.agents[spec.name] = { spec, installedAt: prev && sameJson(prev.spec, spec) ? prev.installedAt : now };
+  }
+  await writeLock(scope, lock);
 }
 
 /** Remove an agent entry by name. Returns true if it existed. */
-export async function removeAgentEntry(name: string): Promise<boolean> {
-  const lock = await readLock();
+export async function removeAgentEntry(scope: Scope, name: string): Promise<boolean> {
+  const lock = await readLock(scope);
   if (!(name in lock.agents)) return false;
   delete lock.agents[name];
-  await writeLock(lock);
+  await writeLock(scope, lock);
   return true;
 }
 
 /** Get a single agent's spec from the lockfile, or null. */
-export async function getAgentSpec(name: string): Promise<AgentSpec | null> {
-  const lock = await readLock();
-  return lock.agents[name]?.spec ?? null;
+export async function getAgentSpec(scope: Scope, name: string): Promise<AgentSpec | null> {
+  return (await readLock(scope)).agents[name]?.spec ?? null;
 }
 
-/** All recorded agent entries as an array. */
-export async function listEntries(): Promise<LockEntry[]> {
-  const lock = await readLock();
-  return Object.values(lock.agents);
+/** All recorded agent entries, sorted by name. */
+export async function listEntries(scope: Scope): Promise<LockEntry[]> {
+  return Object.values((await readLock(scope)).agents);
 }
 
 /** Insert or update a standalone MCP server entry. */
 export async function upsertMcpEntry(
+  scope: Scope,
   id: string,
   name: string,
   dependency: McpDependency,
   targets: ToolId[],
   now: string,
 ): Promise<void> {
-  const lock = await readLock();
-  lock.mcpServers[id] = { id, name, dependency, targets, installedAt: now };
-  await writeLock(lock);
+  const lock = await readLock(scope);
+  const prev = lock.mcpServers[id];
+  const unchanged = prev && sameJson(prev.dependency, dependency) && sameJson(prev.targets, targets);
+  lock.mcpServers[id] = { id, name, dependency, targets, installedAt: unchanged ? prev.installedAt : now };
+  await writeLock(scope, lock);
 }
 
 /** Remove a standalone MCP server entry by id. Returns true if it existed. */
-export async function removeMcpEntry(id: string): Promise<boolean> {
-  const lock = await readLock();
+export async function removeMcpEntry(scope: Scope, id: string): Promise<boolean> {
+  const lock = await readLock(scope);
   if (!(id in lock.mcpServers)) return false;
   delete lock.mcpServers[id];
-  await writeLock(lock);
+  await writeLock(scope, lock);
   return true;
 }
 
 /** Get a single MCP server entry by id, or null. */
-export async function getMcpEntry(id: string): Promise<McpEntry | null> {
-  const lock = await readLock();
-  return lock.mcpServers[id] ?? null;
+export async function getMcpEntry(scope: Scope, id: string): Promise<McpEntry | null> {
+  return (await readLock(scope)).mcpServers[id] ?? null;
 }
 
-/** All recorded MCP server entries as an array. */
-export async function listMcpEntries(): Promise<McpEntry[]> {
-  const lock = await readLock();
-  return Object.values(lock.mcpServers);
+/** All recorded MCP server entries. */
+export async function listMcpEntries(scope: Scope): Promise<McpEntry[]> {
+  return Object.values((await readLock(scope)).mcpServers);
 }
