@@ -1,6 +1,6 @@
 /**
- * A Stack is the hub's signature feature: a curated, one-command bundle of
- * skill presets + MCP servers installed together across all detected tools.
+ * A Stack is a curated, one-command bundle of skill presets + MCP servers
+ * installed together.
  * `skillPresets` reference ids in core/presets.ts; `mcpServers` reference ids
  * in registry/mcp-servers.ts. Both are validated in registry/index.ts.
  */
@@ -22,16 +22,16 @@ export const STACKS: Stack[] = [
   },
   {
     id: "backend",
-    summary: "Backend dev: reviewer, tests, debugger + Postgres and filesystem.",
+    summary: "Backend dev: reviewer, tests, debugger + Postgres and Context7 docs.",
     skillPresets: ["code-reviewer", "test-writer", "debugger"],
-    mcpServers: ["postgres", "filesystem"],
+    mcpServers: ["postgres", "context7"],
     tags: ["backend", "api", "database"],
   },
   {
     id: "frontend",
-    summary: "Frontend dev: reviewer, docs, tests + filesystem and fetch.",
+    summary: "Frontend dev: reviewer, docs, tests + Playwright and Context7 docs.",
     skillPresets: ["code-reviewer", "doc-writer", "test-writer"],
-    mcpServers: ["filesystem", "fetch"],
+    mcpServers: ["playwright", "context7"],
     tags: ["frontend", "ui"],
   },
   {
@@ -43,9 +43,9 @@ export const STACKS: Stack[] = [
   },
   {
     id: "plan",
-    summary: "Up-front design: planner + architect with filesystem context.",
+    summary: "Up-front design: planner + architect with Context7 docs.",
     skillPresets: ["planner", "architect"],
-    mcpServers: ["filesystem"],
+    mcpServers: ["context7"],
     tags: ["planning", "design"],
   },
 ];

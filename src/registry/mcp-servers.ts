@@ -1,4 +1,4 @@
-/** A catalog MCP server the hub can install into a tool's MCP config. */
+/** A catalog MCP server perezdev can install into a tool's MCP config. */
 export interface RegistryMcpServer {
   id: string;
   name: string;
@@ -6,19 +6,23 @@ export interface RegistryMcpServer {
   command: string;
   args: string[];
   tags: string[];
-  /** Environment variables the server needs (e.g. API tokens). */
+  /** Fixed environment for the server process. Secrets are never stored here — see `needs`. */
   env?: Record<string, string>;
+  /** Environment variables the server reads from your shell (tokens, connection strings). */
+  needs?: string[];
 }
 
 /**
- * Curated, installable MCP servers. `id` doubles as the server key written into
- * tool configs. Commands use `npx -y` so no global install is required.
+ * Curated stdio servers, each a maintained package (checked against npm/PyPI
+ * and the publisher's repo — the original @modelcontextprotocol reference
+ * servers for GitHub, Postgres, Puppeteer, etc. were archived in 2025). `id`
+ * doubles as the server key written into tool configs.
  */
 export const MCP_SERVERS: RegistryMcpServer[] = [
   {
     id: "filesystem",
     name: "Filesystem",
-    description: "Read and write files within allowed directories.",
+    description: "Read and write files under the project directory.",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."],
     tags: ["files", "core"],
@@ -26,58 +30,79 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
   {
     id: "git",
     name: "Git",
-    description: "Inspect history, diffs, and branches of a git repo.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-git"],
+    description: "Inspect history, diffs, and branches of the current repo.",
+    command: "uvx",
+    args: ["mcp-server-git"],
     tags: ["git", "vcs"],
   },
   {
     id: "github",
     name: "GitHub",
-    description: "Issues, PRs, and repo operations via the GitHub API.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-github"],
+    description: "Issues, pull requests, and Actions via GitHub's official server (Docker).",
+    command: "docker",
+    args: ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
     tags: ["git", "github", "api"],
+    needs: ["GITHUB_PERSONAL_ACCESS_TOKEN"],
   },
   {
-    id: "gitlab",
-    name: "GitLab",
-    description: "Issues, MRs, and projects via the GitLab API.",
+    id: "context7",
+    name: "Context7",
+    description: "Current, version-specific library docs pulled into the prompt.",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-gitlab"],
-    tags: ["git", "gitlab", "api"],
-  },
-  {
-    id: "postgres",
-    name: "Postgres",
-    description: "Query a PostgreSQL database (read-only by default).",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-postgres"],
-    tags: ["database", "sql", "backend"],
-  },
-  {
-    id: "sqlite",
-    name: "SQLite",
-    description: "Query and inspect a local SQLite database.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-sqlite"],
-    tags: ["database", "sql"],
+    args: ["-y", "@upstash/context7-mcp"],
+    tags: ["docs", "core"],
   },
   {
     id: "fetch",
     name: "Fetch",
     description: "Fetch a URL and return its content as markdown.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-fetch"],
+    command: "uvx",
+    args: ["mcp-server-fetch"],
     tags: ["web", "http"],
   },
   {
-    id: "sequential-thinking",
-    name: "Sequential Thinking",
-    description: "Structured multi-step reasoning for harder tasks.",
+    id: "playwright",
+    name: "Playwright",
+    description: "Drive a real browser: navigate, click, read the accessibility tree.",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-    tags: ["reason", "core"],
+    args: ["-y", "@playwright/mcp@latest"],
+    tags: ["web", "testing", "frontend"],
+  },
+  {
+    id: "postgres",
+    name: "Postgres",
+    description: "Query and analyze a PostgreSQL database (restricted, read-only mode).",
+    command: "uvx",
+    args: ["postgres-mcp", "--access-mode=restricted"],
+    tags: ["database", "sql", "backend"],
+    needs: ["DATABASE_URI"],
+  },
+  {
+    id: "redis",
+    name: "Redis",
+    description: "Inspect keys and data structures in a Redis instance (Redis's official server).",
+    command: "uvx",
+    args: ["--from", "redis-mcp-server@latest", "redis-mcp-server"],
+    tags: ["database", "cache"],
+    needs: ["REDIS_HOST"],
+  },
+  {
+    id: "sentry",
+    name: "Sentry",
+    description: "Read Sentry issues, events, and stack traces.",
+    command: "npx",
+    args: ["-y", "@sentry/mcp-server"],
+    tags: ["observability", "errors"],
+    needs: ["SENTRY_ACCESS_TOKEN"],
+  },
+  {
+    id: "brave-search",
+    name: "Brave Search",
+    description: "Web search via the Brave Search API.",
+    command: "npx",
+    args: ["-y", "@brave/brave-search-mcp-server"],
+    tags: ["web", "search"],
+    needs: ["BRAVE_API_KEY"],
   },
   {
     id: "memory",
@@ -85,46 +110,22 @@ export const MCP_SERVERS: RegistryMcpServer[] = [
     description: "Persistent knowledge-graph memory across sessions.",
     command: "npx",
     args: ["-y", "@modelcontextprotocol/server-memory"],
-    tags: ["memory", "core"],
+    tags: ["memory"],
   },
   {
-    id: "brave-search",
-    name: "Brave Search",
-    description: "Web search via the Brave Search API.",
+    id: "sequential-thinking",
+    name: "Sequential Thinking",
+    description: "Structured multi-step reasoning for harder tasks.",
     command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-brave-search"],
-    tags: ["web", "search"],
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+    tags: ["reasoning"],
   },
   {
-    id: "docker",
-    name: "Docker",
-    description: "Manage containers, images, and Docker environments.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-docker"],
-    tags: ["docker", "devops"],
-  },
-  {
-    id: "puppeteer",
-    name: "Puppeteer",
-    description: "Drive a headless browser for automation and scraping.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-puppeteer"],
-    tags: ["web", "automation"],
-  },
-  {
-    id: "redis",
-    name: "Redis",
-    description: "Query and inspect a Redis instance.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-redis"],
-    tags: ["database", "cache"],
-  },
-  {
-    id: "sentry",
-    name: "Sentry",
-    description: "Read Sentry issues and error context.",
-    command: "npx",
-    args: ["-y", "@modelcontextprotocol/server-sentry"],
-    tags: ["observability", "errors"],
+    id: "time",
+    name: "Time",
+    description: "Current time and timezone conversion.",
+    command: "uvx",
+    args: ["mcp-server-time"],
+    tags: ["utility"],
   },
 ];

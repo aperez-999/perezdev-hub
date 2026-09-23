@@ -1,10 +1,9 @@
-import { CLI_AGENTS, type RegistryAgent } from "./agents.js";
 import { MCP_SERVERS, type RegistryMcpServer } from "./mcp-servers.js";
 import { STACKS, type Stack } from "./stacks.js";
 import { getPreset } from "../core/presets.js";
 
-export { CLI_AGENTS, MCP_SERVERS, STACKS };
-export type { RegistryAgent, RegistryMcpServer, Stack };
+export { MCP_SERVERS, STACKS };
+export type { RegistryMcpServer, Stack };
 
 /**
  * Single access point for the bundled catalog. A future remote-refresh feature

@@ -116,17 +116,21 @@ export function recommend(
     const server = getMcpServer(id);
     if (server && !mcp.some((m) => m.server.id === id)) mcp.push({ server, reason, score });
   };
-  addMcp("filesystem", "give agents access to your files", 40);
   if (scan.git) {
     addMcp("git", "git repo — inspect history and diffs", 54);
     addMcp("github", "GitHub workflows (issues, PRs)", 44);
   }
   for (const db of scan.databases) {
     if (db === "postgres") addMcp("postgres", "Postgres dependency detected", 62);
-    if (db === "sqlite") addMcp("sqlite", "SQLite detected", 62);
+    if (db === "redis") addMcp("redis", "Redis client detected", 58);
   }
-  if (scan.frameworks.some((f) => FRONTEND.includes(f) || BACKEND.includes(f))) {
-    addMcp("fetch", "web/API project — fetch pages and endpoints", 46);
+  if (scan.frameworks.length > 0) {
+    addMcp("context7", "up-to-date docs for your framework versions", 50);
+  }
+  if (scan.frameworks.some((f) => FRONTEND.includes(f))) {
+    addMcp("playwright", "frontend project — let agents check the UI in a browser", 48);
+  } else if (scan.frameworks.some((f) => BACKEND.includes(f))) {
+    addMcp("fetch", "API project — fetch pages and endpoints", 46);
   }
 
   agents.sort((a, b) => b.score - a.score);
