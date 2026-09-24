@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { buildProfile, parseProfile, profileToServer } from "../src/core/profile.js";
+import { buildProfile, parseProfile } from "../src/core/profile.js";
 import { parseAgentSpec } from "../src/core/agent-spec.js";
 import { PROFILE_FETCH_MAX_BYTES, readRef } from "../src/commands/profile.js";
 import type { LockEntry, McpEntry } from "../src/core/lockfile.js";
@@ -62,16 +62,6 @@ describe("parseProfile", () => {
   });
 });
 
-describe("profileToServer", () => {
-  it("maps an MCP entry into an installable server", () => {
-    const server = profileToServer({ id: "git", name: "Git", dependency: { name: "git", command: "npx", args: ["-y", "x"], env: { TOKEN: "t" } } });
-    expect(server.id).toBe("git");
-    expect(server.command).toBe("npx");
-    expect(server.env).toEqual({ TOKEN: "t" });
-    expect(server.tags).toContain("profile");
-  });
-});
-
 describe("readRef", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -88,7 +78,8 @@ describe("readRef", () => {
   it("still refuses a private host before fetching", async () => {
     const spy = vi.fn();
     vi.stubGlobal("fetch", spy);
-    await expect(readRef("http://127.0.0.1/p.json")).rejects.toThrow(/local\/private/);
+    await expect(readRef("https://127.0.0.1/p.json")).rejects.toThrow(/local\/private/);
+    await expect(readRef("http://example.com/p.json")).rejects.toThrow(/https/);
     expect(spy).not.toHaveBeenCalled();
   });
 });

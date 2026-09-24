@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { agentSpecSchema, mcpDependencySchema, slugSchema } from "./agent-spec.js";
 import type { LockEntry, McpEntry } from "./lockfile.js";
-import type { RegistryMcpServer } from "../registry/index.js";
 import { assertSafeMcpLaunch } from "./mcp-allow.js";
 
 const profileMcpSchema = z.object({
@@ -59,17 +58,4 @@ export function parseProfile(text: string): Profile {
     }
   }
   return result.data;
-}
-
-/** Convert a profile MCP entry into an installable catalog server. */
-export function profileToServer(entry: ProfileMcp): RegistryMcpServer {
-  return {
-    id: entry.id,
-    name: entry.name,
-    description: `imported from a profile`,
-    command: entry.dependency.command,
-    args: entry.dependency.args,
-    tags: ["profile"],
-    env: entry.dependency.env,
-  };
 }
