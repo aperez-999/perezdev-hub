@@ -1,26 +1,14 @@
 import pc from "picocolors";
-import type { ManagedItem } from "../adapters/types.js";
 
-/** Render managed items as an aligned, colorized table. */
-export function renderManagedTable(items: ManagedItem[]): string {
-  if (items.length === 0) return pc.dim("No managed agents found.");
+/** Visible width of a string, ignoring ANSI color codes. */
+const width = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "").length;
 
-  const headers = ["NAME", "TOOL", "VERSION", "PATH"];
-  const rows = items.map((i) => [i.name, i.tool, i.version ?? "-", i.path]);
-
-  const widths = headers.map((h, col) =>
-    Math.max(h.length, ...rows.map((r) => r[col]!.length)),
-  );
-
-  const fmt = (cells: string[], dim = false) =>
+/** Render rows as an aligned table with a bold header. Cells may contain color codes. */
+export function table(headers: string[], rows: string[][]): string {
+  const widths = headers.map((h, col) => Math.max(h.length, ...rows.map((r) => width(r[col] ?? ""))));
+  const fmt = (cells: string[]) =>
     cells
-      .map((c, col) => {
-        const padded = c.padEnd(widths[col]!);
-        return dim ? pc.dim(padded) : padded;
-      })
+      .map((c, col) => (col === cells.length - 1 ? c : c + " ".repeat(widths[col]! - width(c))))
       .join("  ");
-
-  const out: string[] = [pc.bold(fmt(headers))];
-  for (const r of rows) out.push(fmt(r));
-  return out.join("\n");
+  return [pc.bold(fmt(headers)), ...rows.map(fmt)].join("\n");
 }
