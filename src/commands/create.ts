@@ -4,24 +4,24 @@ import { slugify } from "../core/slug.js";
 import { generateSpec, type GenerateInput } from "../core/generate.js";
 import { getPreset } from "../core/presets.js";
 import { hasAnthropicKey } from "../core/config.js";
-import { installSpec, planSpec } from "../core/install.js";
+import { planChanges } from "../core/install.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
 import { resolveTargets, type ResolvedTargets } from "../core/targets.js";
+import { toolName } from "../adapters/tools.js";
 import { synthesizeInstructions } from "../llm/synthesize.js";
-import { p, guardCancel, renderDiff } from "../ui/prompts.js";
+import { printNextSteps } from "../ui/next-steps.js";
+import { confirmAndApply, type ApplyOptions } from "../ui/apply.js";
+import { p, guardCancel, intro, isInteractive } from "../ui/prompts.js";
 
 /** Flags accepted by `perezdev create` for quick / non-interactive use. */
-export interface CreateOptions {
+export interface CreateOptions extends ScopeOptions, ApplyOptions {
   name?: string;
   purpose?: string;
   role?: string;
   target?: string; // comma-separated tool ids
   preset?: string;
   advanced?: boolean;
-  yes?: boolean;
-  dryRun?: boolean;
 }
-
-const isTty = Boolean(process.stdout.isTTY);
 
 /** Derive a clean role noun-phrase from the agent name (e.g. "a code reviewer agent"). */
 function deriveRole(name: string): string {
@@ -34,59 +34,43 @@ function splitItems(raw: string): string[] {
   return raw.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
 }
 
-/** Q&A wizard (or flag/preset-driven): build an agent and install it globally. */
+/** Build an agent (from a preset, flags, or prompts) and install it into the scope's tools. */
 export async function runCreate(opts: CreateOptions = {}): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(" perezdev create ")));
+  const scope = await resolveScope(opts);
+  intro("create", scope);
 
-  const resolved = await resolveTargets(opts.target);
+  const resolved = await resolveTargets(scope, opts.target);
   const input = await buildInput(opts, resolved);
 
-  // LLM-enhance the body when a key is present; else deterministic template.
+  // LLM-enhance the body when a key is present (presets are already curated).
   let override: string | undefined;
-  if (hasAnthropicKey()) {
+  if (hasAnthropicKey() && !opts.preset) {
     const spin = p.spinner();
-    spin.start("Synthesizing instructions with Claude…");
+    spin.start("Writing instructions with Claude…");
     const text = await synthesizeInstructions(input);
-    spin.stop(text ? "Instructions synthesized." : "Used template (LLM unavailable).");
+    spin.stop(text ? "Instructions written." : "Claude unavailable — used the built-in template.");
     override = text ?? undefined;
   }
 
   const spec = generateSpec(input, override);
-
-  if (opts.dryRun) {
-    p.note(renderDiff(await planSpec(spec)), "Files to write");
-    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install '${spec.name}'.`));
-    return;
-  }
-
-  const auto = opts.yes === true || !isTty;
-  if (!auto) {
-    p.note(renderDiff(await planSpec(spec)), "Files to write");
-    const ok = guardCancel(
-      await p.confirm({ message: `Install '${spec.name}' to ${spec.targets.join(", ")}?` }),
-    );
-    if (!ok) {
-      p.cancel("Aborted. Nothing written.");
-      process.exit(0);
-    }
-  }
-
-  const written = await installSpec(spec, new Date().toISOString());
-  const paths = written.map((f) => `  ${pc.dim("→")} ${f.path}`).join("\n");
-  p.note(paths, "Wrote");
+  const plan = await planChanges(scope, { agents: [spec] });
+  const targets = plan.next.agents[spec.name]?.spec.targets ?? [];
+  const wrote = await confirmAndApply(plan, `Install '${spec.name}' for ${targets.map(toolName).join(", ")}?`, opts);
+  if (opts.dryRun) return;
+  if (wrote) await printNextSteps(scope, plan.next);
   p.outro(
-    `${pc.green("✓")} Installed ${pc.bold(spec.name)} → ${spec.targets.join(", ")}.  ` +
-      `${pc.dim(`perezdev list · perezdev show ${spec.name}`)}`,
+    wrote
+      ? `${pc.green("✓")} ${pc.bold(spec.name)} installed. ${pc.dim(`perezdev show ${spec.name}`)}`
+      : `${pc.bold(spec.name)} is already up to date.`,
   );
 }
 
 /** Resolve a GenerateInput from preset, flags, and/or interactive prompts. */
 async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promise<GenerateInput> {
   const defaultTargets = resolved.targets;
-  // A flag or an .perezdevrc default already picked targets — don't ask again.
-  const targetsChosen = resolved.source === "flag" || resolved.source === "rc";
+  // A flag or an rc default already picked targets — don't ask again.
+  const targetsChosen = resolved.source === "flag" || resolved.source === "rc" || !isInteractive();
 
-  // 1. Preset — fully formed; only targets may come from a flag/rc.
   if (opts.preset) {
     const preset = getPreset(opts.preset);
     if (!preset) {
@@ -96,8 +80,7 @@ async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promi
     return { ...preset.input, targets: defaultTargets };
   }
 
-  // 2. Flags supply name + purpose → quick, no prompts (defaults for the rest).
-  // Purpose-only uses the same stopword slug as the Skills page.
+  // Flags supply purpose (and optionally name) → no prompts.
   const named = opts.name || (opts.purpose ? slugify(opts.purpose) : undefined);
   if (named && opts.purpose) {
     const r = slugSchema.safeParse(named);
@@ -116,7 +99,11 @@ async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promi
     };
   }
 
-  // 3. Interactive — minimal by default: name + purpose + targets.
+  if (!isInteractive()) {
+    p.cancel(`Not a terminal — pass ${pc.cyan("--purpose")} (and optionally ${pc.cyan("--name")}) or ${pc.cyan("--preset")}.`);
+    process.exit(1);
+  }
+
   const name =
     opts.name ??
     guardCancel(
@@ -127,71 +114,35 @@ async function buildInput(opts: CreateOptions, resolved: ResolvedTargets): Promi
       }),
     );
 
-  const purpose =
-    opts.purpose ??
-    guardCancel(
-      await p.text({
-        message: "What should it do?",
-        placeholder: "review my code for bugs and security issues",
-        validate: (v) => (v.trim().length >= 8 ? undefined : "Give a short description (min 8 chars)."),
-      }),
-    );
+  const purpose = guardCancel(
+    await p.text({
+      message: "What should it do?",
+      placeholder: "review my code for bugs and security issues",
+      validate: (v) => (v.trim().length >= 8 ? undefined : "Give a short description (min 8 chars)."),
+    }),
+  );
 
-  // Skip the target prompt entirely when a flag or rc default already chose.
   const targets = targetsChosen
     ? defaultTargets
     : (guardCancel(
         await p.multiselect({
-          message: "Install to",
-          options: defaultTargets.length
-            ? buildTargetOptions(defaultTargets)
-            : buildTargetOptions([...TOOL_IDS]),
+          message: "Install for",
+          options: TOOL_IDS.map((id) => ({ value: id, label: toolName(id) })),
           initialValues: defaultTargets,
           required: true,
         }),
       ) as ToolId[]);
 
-  // Optional advanced step — off unless asked, so the common path stays fast.
   let behaviors: string[] = [];
   let allowedTools: string[] = [];
   let mcpDependencies: McpDependency[] = [];
-  const wantAdvanced =
-    opts.advanced ||
-    guardCancel(
-      await p.confirm({ message: "Customize behaviors / tools / MCP?", initialValue: false }),
-    );
-  if (wantAdvanced) {
-    behaviors = splitItems(
-      guardCancel(await p.text({ message: "Key behaviors (comma/newline, optional)", placeholder: "" })),
-    );
-    allowedTools = splitItems(
-      guardCancel(await p.text({ message: "Allowed tools (comma, optional)", placeholder: "Read, Grep" })),
-    );
+  if (opts.advanced) {
+    behaviors = splitItems(guardCancel(await p.text({ message: "Key behaviors (comma/newline, optional)", placeholder: "" })));
+    allowedTools = splitItems(guardCancel(await p.text({ message: "Allowed tools (comma, optional)", placeholder: "Read, Grep" })));
     mcpDependencies = await collectMcpDeps();
   }
 
-  return {
-    name,
-    role: opts.role ?? deriveRole(name),
-    description: purpose,
-    behaviors,
-    allowedTools,
-    mcpDependencies,
-    targets,
-  };
-}
-
-function buildTargetOptions(ids: ToolId[]) {
-  const labels: Record<ToolId, string> = {
-    "claude-code": "Claude Code",
-    cursor: "Cursor",
-    copilot: "GitHub Copilot",
-    codex: "Codex",
-    cline: "Cline",
-    windsurf: "Windsurf",
-    roo: "Roo Code",
-  };
-  return ids.map((id) => ({ value: id, label: labels[id] }));
+  return { name, role: opts.role ?? deriveRole(name), description: purpose, behaviors, allowedTools, mcpDependencies, targets };
 }
 
 /** Optional MCP dependency loop (advanced mode only). */
@@ -206,9 +157,7 @@ async function collectMcpDeps(): Promise<McpDependency[]> {
         validate: (v) => (slugSchema.safeParse(v).success ? undefined : "Must be kebab-case."),
       }),
     );
-    const command = guardCancel(
-      await p.text({ message: "Launch command", initialValue: "npx" }),
-    );
+    const command = guardCancel(await p.text({ message: "Launch command", initialValue: "npx" }));
     const argsRaw = guardCancel(
       await p.text({ message: "Arguments (comma)", placeholder: "-y, @modelcontextprotocol/server-filesystem" }),
     );

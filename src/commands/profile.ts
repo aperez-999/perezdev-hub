@@ -1,23 +1,21 @@
 import { writeFile } from "node:fs/promises";
 import pc from "picocolors";
-import * as p from "@clack/prompts";
-import { listEntries, listMcpEntries, getAgentSpec, getMcpEntry } from "../core/lockfile.js";
-import { installSpec, planSpec } from "../core/install.js";
-import { installMcpServer, planMcpServer } from "../core/mcp-install.js";
+import { readLock } from "../core/lockfile.js";
+import { planChanges } from "../core/install.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
 import { resolveTargets } from "../core/targets.js";
 import { readIfExists } from "../util/fs-safe.js";
-import { renderDiff } from "../ui/prompts.js";
-import type { PlannedFile } from "../adapters/types.js";
-import { buildProfile, parseProfile, profileToServer, type Profile } from "../core/profile.js";
+import { confirmAndApply, type ApplyOptions } from "../ui/apply.js";
+import { p, intro } from "../ui/prompts.js";
+import { buildProfile, parseProfile, type Profile } from "../core/profile.js";
 
-interface ExportOpts {
+interface ExportOpts extends ScopeOptions {
   out?: string;
 }
-interface ImportOpts {
+interface ImportOpts extends ScopeOptions, ApplyOptions {
   target?: string;
-  yes?: boolean;
-  force?: boolean;
-  dryRun?: boolean;
+  /** Replace agents/servers that already exist in this scope. */
+  overwrite?: boolean;
 }
 interface ShowOpts {
   json?: boolean;
@@ -54,6 +52,7 @@ const PROFILE_FETCH_MS = 8_000;
 export async function readRef(ref: string): Promise<string> {
   if (/^https?:\/\//.test(ref)) {
     const url = new URL(ref);
+    if (url.protocol !== "https:") throw new Error("refused: profile URLs must use https");
     assertPublicUrl(url);
     // No redirect following: a public URL could otherwise 30x to a private host.
     const res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(PROFILE_FETCH_MS) });
@@ -71,9 +70,10 @@ export async function readRef(ref: string): Promise<string> {
 
 /** Bundle the current setup into a shareable profile JSON. */
 export async function runProfileExport(opts: ExportOpts = {}): Promise<void> {
-  const profile = buildProfile(await listEntries(), await listMcpEntries(), "profile", new Date().toISOString());
+  const lock = await readLock(await resolveScope(opts));
+  const profile = buildProfile(Object.values(lock.agents), Object.values(lock.mcpServers), "profile", new Date().toISOString());
   if (profile.agents.length === 0 && profile.mcp.length === 0) {
-    console.error(pc.yellow("Nothing to export yet. Create or install agents first (perezdev create)."));
+    console.error(pc.yellow("Nothing to export yet. Install agents first (perezdev create)."));
     process.exit(1);
   }
   const json = JSON.stringify(profile, null, 2) + "\n";
@@ -91,7 +91,7 @@ export async function runProfileExport(opts: ExportOpts = {}): Promise<void> {
 function summarize(profile: Profile): string {
   const a = profile.agents.map((x) => x.name).join(", ") || "—";
   const m = profile.mcp.map((x) => x.id).join(", ") || "—";
-  return `  agents: ${a}\n  mcp:    ${m}`;
+  return `agents: ${a}\nmcp:    ${m}`;
 }
 
 /** Preview a profile without installing anything. */
@@ -102,12 +102,13 @@ export async function runProfileShow(ref: string, opts: ShowOpts = {}): Promise<
     return;
   }
   console.log(`\n  ${pc.bold(profile.name)}${profile.createdAt ? pc.dim(`  (${profile.createdAt})`) : ""}`);
-  console.log(summarize(profile) + "\n");
+  console.log(summarize(profile).split("\n").map((l) => `  ${l}`).join("\n") + "\n");
 }
 
 /** Install every agent + MCP server from a profile across the chosen tools. */
 export async function runProfileImport(ref: string, opts: ImportOpts = {}): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(" perezdev profile import ")));
+  const scope = await resolveScope(opts);
+  intro("profile import", scope);
   let profile: Profile;
   try {
     profile = parseProfile(await readRef(ref));
@@ -116,63 +117,20 @@ export async function runProfileImport(ref: string, opts: ImportOpts = {}): Prom
     process.exit(1);
   }
 
-  const { targets } = await resolveTargets(opts.target);
-
-  if (opts.dryRun) {
-    const planned: PlannedFile[] = [];
-    for (const spec of profile.agents) planned.push(...(await planSpec({ ...spec, targets })));
-    for (const entry of profile.mcp) planned.push(...(await planMcpServer(profileToServer(entry), targets)));
-    p.note(summarize(profile), `Profile: ${profile.name}`);
-    p.note(renderDiff(planned), "Files to write");
-    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install to ${targets.join(", ")}.`));
-    return;
-  }
+  const { targets } = await resolveTargets(scope, opts.target);
+  const lock = await readLock(scope);
+  const agents = profile.agents.filter((a) => opts.overwrite || !lock.agents[a.name]);
+  const mcp = profile.mcp.filter((m) => opts.overwrite || !lock.mcpServers[m.id]);
+  const kept = profile.agents.length - agents.length + profile.mcp.length - mcp.length;
 
   p.note(summarize(profile), `Profile: ${profile.name}`);
-  if (!opts.yes && process.stdout.isTTY) {
-    const ok = await p.confirm({ message: `Install to ${targets.join(", ")}?` });
-    if (ok !== true) {
-      p.cancel("Aborted.");
-      process.exit(0);
-    }
-  }
+  if (kept > 0) p.log.info(`${kept} item(s) already installed here — kept as-is (--overwrite to replace).`);
 
-  const now = new Date().toISOString();
-  let agentsInstalled = 0;
-  let agentsSkipped = 0;
-  let mcpInstalled = 0;
-  let mcpSkipped = 0;
-  const failures: string[] = [];
-
-  for (const spec of profile.agents) {
-    if (!opts.force && (await getAgentSpec(spec.name))) {
-      agentsSkipped++;
-      continue;
-    }
-    try {
-      await installSpec({ ...spec, targets }, now);
-      agentsInstalled++;
-    } catch (err) {
-      failures.push(`agent ${spec.name}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-  for (const entry of profile.mcp) {
-    if (!opts.force && (await getMcpEntry(entry.id))) {
-      mcpSkipped++;
-      continue;
-    }
-    try {
-      await installMcpServer(profileToServer(entry), targets, now);
-      mcpInstalled++;
-    } catch (err) {
-      failures.push(`mcp ${entry.id}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  for (const f of failures) console.log(pc.red(`  ✗ ${f}`));
-  p.outro(
-    `${pc.green("✓")} Imported — agents: ${agentsInstalled} installed, ${agentsSkipped} skipped · ` +
-      `mcp: ${mcpInstalled} installed, ${mcpSkipped} skipped${failures.length ? ` · ${failures.length} failed` : ""}.`,
-  );
-  if (failures.length) process.exitCode = 1;
+  const plan = await planChanges(scope, {
+    agents: agents.map((spec) => ({ ...spec, source: "imported" as const, targets })),
+    mcp: mcp.map((m) => ({ id: m.id, name: m.name, dependency: m.dependency, targets })),
+  });
+  await confirmAndApply(plan, `Install profile '${profile.name}'?`, opts);
+  if (opts.dryRun) return;
+  p.outro(`${pc.green("✓")} Imported ${agents.length} agent(s) and ${mcp.length} MCP server(s).`);
 }

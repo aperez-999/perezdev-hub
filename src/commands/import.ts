@@ -1,26 +1,26 @@
 import pc from "picocolors";
 import { readIfExists } from "../util/fs-safe.js";
 import { safeParseAgentSpec } from "../core/agent-spec.js";
-import { installSpec, planSpec } from "../core/install.js";
-import { p, guardCancel, renderDiff } from "../ui/prompts.js";
+import { planChanges } from "../core/install.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
+import { parseTargetCsv } from "../core/targets.js";
+import { confirmAndApply, type ApplyOptions } from "../ui/apply.js";
+import { p, intro } from "../ui/prompts.js";
 
-export interface ImportOptions {
-  yes?: boolean;
-  dryRun?: boolean;
+export interface ImportOptions extends ScopeOptions, ApplyOptions {
+  target?: string;
 }
-
-const isTty = Boolean(process.stdout.isTTY);
 
 /** Install a shared agent spec from a JSON file produced by `perezdev export`. */
 export async function runImport(file: string, opts: ImportOptions = {}): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(" perezdev import ")));
+  const scope = await resolveScope(opts);
+  intro("import", scope);
 
   const raw = await readIfExists(file);
   if (raw === null) {
     p.cancel(`File not found: ${file}`);
     process.exit(1);
   }
-
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -28,32 +28,17 @@ export async function runImport(file: string, opts: ImportOptions = {}): Promise
     p.cancel(`Not valid JSON: ${file}`);
     process.exit(1);
   }
-
   const result = safeParseAgentSpec(parsed);
   if (!result.success) {
-    p.cancel(`Invalid agent spec: ${result.error.issues[0]?.message}`);
+    const issue = result.error.issues[0];
+    p.cancel(`Invalid agent spec: ${issue ? `${issue.path.join(".")} — ${issue.message}` : "schema mismatch"}`);
     process.exit(1);
   }
-  const spec = result.data;
+  const targets = parseTargetCsv(opts.target);
+  const spec = { ...result.data, source: "imported" as const, ...(targets ? { targets } : {}) };
 
-  if (opts.dryRun) {
-    p.note(renderDiff(await planSpec(spec)), "Files to write");
-    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to import '${spec.name}'.`));
-    return;
-  }
-
-  const auto = opts.yes === true || !isTty;
-  if (!auto) {
-    p.note(renderDiff(await planSpec(spec)), "Files to write");
-    const ok = guardCancel(
-      await p.confirm({ message: `Import '${spec.name}' → ${spec.targets.join(", ")}?` }),
-    );
-    if (!ok) {
-      p.cancel("Aborted.");
-      process.exit(0);
-    }
-  }
-
-  await installSpec(spec, new Date().toISOString());
-  p.outro(`${pc.green("✓")} Imported ${pc.bold(spec.name)} → ${spec.targets.join(", ")}.`);
+  const plan = await planChanges(scope, { agents: [spec] });
+  await confirmAndApply(plan, `Import '${spec.name}'?`, opts);
+  if (opts.dryRun) return;
+  p.outro(`${pc.green("✓")} Imported ${pc.bold(spec.name)}.`);
 }

@@ -1,54 +1,43 @@
 import pc from "picocolors";
 import { STACKS, getStack } from "../registry/index.js";
-
-const STACK_IDS = STACKS.map((s) => s.id);
-import { installStack, planStack } from "../core/stack.js";
+import { stackChanges } from "../core/stack.js";
+import { planChanges } from "../core/install.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
 import { resolveTargets } from "../core/targets.js";
-import { p, guardCancel, renderDiff } from "../ui/prompts.js";
+import { printNextSteps } from "../ui/next-steps.js";
+import { confirmAndApply, type ApplyOptions } from "../ui/apply.js";
+import { p, intro } from "../ui/prompts.js";
 
-const isTty = Boolean(process.stdout.isTTY);
-
-export interface StackOptions {
+export interface StackOptions extends ScopeOptions, ApplyOptions {
   target?: string;
-  yes?: boolean;
-  dryRun?: boolean;
 }
 
-/** Install a stack: skill presets + MCP servers across detected tools. */
-export async function runStackInstall(id: string, opts: StackOptions = {}): Promise<void> {
-  p.intro(pc.bgCyan(pc.black(" perezdev stack ")));
+/** List the bundled stacks. */
+export function printStacks(): void {
+  console.log(pc.bold("\n  Stacks") + pc.dim("  (perezdev stack <id>)\n"));
+  const width = Math.max(...STACKS.map((s) => s.id.length));
+  for (const s of STACKS) {
+    const parts = `${s.skillPresets.length} skills, ${s.mcpServers.length} MCP`;
+    console.log(`  ${pc.cyan(s.id.padEnd(width))}  ${s.summary} ${pc.dim(`(${parts})`)}`);
+  }
+  console.log();
+}
 
+/** Install a stack: skill presets + MCP servers in one step. */
+export async function runStackInstall(id: string | undefined, opts: StackOptions = {}): Promise<void> {
+  if (!id) return printStacks();
   const stack = getStack(id);
   if (!stack) {
-    p.cancel(`Unknown stack '${id}'. Known stacks: ${STACK_IDS.join(", ")}.`);
+    console.error(pc.red(`Unknown stack '${id}'. Known: ${STACKS.map((s) => s.id).join(", ")}.`));
     process.exit(1);
   }
+  const scope = await resolveScope(opts);
+  intro(`stack ${stack.id}`, scope);
 
-  const { targets } = await resolveTargets(opts.target);
-
-  if (opts.dryRun) {
-    p.note(renderDiff(await planStack(stack, targets)), `Stack: ${stack.id}`);
-    p.outro(pc.dim(`dry run — nothing written. Drop --dry-run to install stack '${stack.id}'.`));
-    return;
-  }
-
-  const auto = opts.yes === true || !isTty;
-  if (!auto) {
-    p.note(renderDiff(await planStack(stack, targets)), `Stack: ${stack.id}`);
-    const ok = guardCancel(
-      await p.confirm({
-        message: `Install stack '${stack.id}' (${stack.skillPresets.length} skills, ${stack.mcpServers.length} MCP) to ${targets.join(", ")}?`,
-      }),
-    );
-    if (!ok) {
-      p.cancel("Aborted.");
-      process.exit(0);
-    }
-  }
-
-  const result = await installStack(id, targets, new Date().toISOString());
-  p.outro(
-    `${pc.green("✓")} Installed stack ${pc.bold(stack.id)} — ` +
-      `${result.agents.length} skill(s), ${result.mcpServers.length} MCP server(s) → ${targets.join(", ")}.`,
-  );
+  const { targets } = await resolveTargets(scope, opts.target);
+  const plan = await planChanges(scope, stackChanges(stack, targets));
+  const wrote = await confirmAndApply(plan, `Install stack '${stack.id}'?`, opts);
+  if (opts.dryRun) return;
+  if (wrote) await printNextSteps(scope, plan.next);
+  p.outro(`${pc.green("✓")} Installed ${pc.bold(stack.id)} — ${stack.skillPresets.length} skill(s), ${stack.mcpServers.length} MCP server(s).`);
 }

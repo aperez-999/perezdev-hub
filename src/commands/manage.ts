@@ -1,26 +1,30 @@
 import pc from "picocolors";
-import { p, guardCancel } from "../ui/prompts.js";
-import { listEntries, listMcpEntries, getAgentSpec, removeAgentEntry } from "../core/lockfile.js";
-import { getAdapter } from "../adapters/registry.js";
-import { removeMcpServer } from "../core/mcp-install.js";
+import { listEntries, listMcpEntries } from "../core/lockfile.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
+import { toolName } from "../adapters/tools.js";
+import { p, guardCancel, intro, isInteractive } from "../ui/prompts.js";
 import { runShow } from "./show.js";
 import { runUpdate } from "./update.js";
 import { runExport } from "./export.js";
+import { runRemove } from "./remove.js";
 
 const BACK = "__back";
 const MCP_PREFIX = "mcp:";
 
-/**
- * Interactive management: pick an agent, then an action. No names or command
- * flags to memorize — everything is selectable. Returns to the picker after
- * each action so it feels like a small app.
- */
-export async function runManage(): Promise<void> {
+/** Pick an installed item, then an action — for when you don't remember the name. */
+export async function runManage(opts: ScopeOptions = {}): Promise<void> {
+  if (!isInteractive()) {
+    console.error("perezdev manage is interactive. Use list / show / sync / remove in scripts.");
+    process.exit(1);
+  }
+  const scope = await resolveScope(opts);
+  intro("manage", scope);
+
   for (;;) {
-    const entries = await listEntries();
-    const mcp = await listMcpEntries();
+    const entries = await listEntries(scope);
+    const mcp = await listMcpEntries(scope);
     if (entries.length === 0 && mcp.length === 0) {
-      p.note(`Nothing yet. Try ${pc.cyan("perezdev create")} or ${pc.cyan("perezdev create --preset")}.`, "Empty");
+      p.outro(`Nothing installed here. Try ${pc.cyan("perezdev init")}.`);
       return;
     }
 
@@ -31,86 +35,43 @@ export async function runManage(): Promise<void> {
           ...entries.map((e) => ({
             value: e.spec.name,
             label: e.spec.name,
-            hint: `${e.spec.targets.join(", ")} · v${e.spec.version}`,
+            hint: `v${e.spec.version} · ${e.spec.targets.map(toolName).join(", ")}`,
           })),
-          ...mcp.map((m) => ({
-            value: `${MCP_PREFIX}${m.id}`,
-            label: `${m.id} ${pc.dim("(MCP)")}`,
-            hint: m.targets.join(", "),
-          })),
-          { value: BACK, label: pc.dim("← Back") },
+          ...mcp.map((m) => ({ value: `${MCP_PREFIX}${m.id}`, label: `${m.id} ${pc.dim("(MCP)")}`, hint: m.targets.map(toolName).join(", ") })),
+          { value: BACK, label: pc.dim("Done") },
         ],
       }),
     ) as string;
-    if (choice === BACK) return;
+    if (choice === BACK) {
+      p.outro(pc.dim("Done."));
+      return;
+    }
 
-    if (choice.startsWith(MCP_PREFIX)) await mcpActions(choice.slice(MCP_PREFIX.length));
-    else await agentActions(choice);
-  }
-}
-
-/** Action submenu for an MCP server: remove only. */
-async function mcpActions(id: string): Promise<void> {
-  const ok = guardCancel(
-    await p.confirm({ message: `Remove MCP server '${id}' from your tools?`, initialValue: false }),
-  );
-  if (!ok) return;
-  await removeMcpServer(id);
-  p.log.success(`Removed MCP server '${id}'.`);
-}
-
-/** Action submenu for a single agent; loops until Back or Remove. */
-async function agentActions(name: string): Promise<void> {
-  for (;;) {
+    const isMcp = choice.startsWith(MCP_PREFIX);
+    const name = isMcp ? choice.slice(MCP_PREFIX.length) : choice;
     const action = guardCancel(
       await p.select({
         message: pc.cyan(name),
         options: [
-          { value: "show", label: "👁  Show", hint: "spec, files, instructions" },
-          { value: "update", label: "🔄 Update", hint: "re-apply files (repair drift)" },
-          { value: "bump", label: "⬆️  Bump version", hint: "re-apply + bump patch" },
-          { value: "export", label: "📤 Export", hint: "write shareable JSON" },
-          { value: "remove", label: "🗑  Remove", hint: "delete from all tools" },
-          { value: BACK, label: pc.dim("← Back") },
+          { value: "show", label: "Show", hint: "spec, files, instructions" },
+          ...(isMcp
+            ? []
+            : [
+                { value: "sync", label: "Sync", hint: "rewrite its files from the lockfile" },
+                { value: "bump", label: "Bump version", hint: "sync + bump patch" },
+                { value: "export", label: "Export", hint: `write ${name}.perezdev.json` },
+              ]),
+          { value: "remove", label: "Remove", hint: "delete from every tool" },
+          { value: BACK, label: pc.dim("Back") },
         ],
       }),
     ) as string;
 
-    switch (action) {
-      case "show":
-        await runShow(name);
-        break;
-      case "update":
-        await runUpdate(name);
-        break;
-      case "bump":
-        await runUpdate(name, { bump: true });
-        break;
-      case "export":
-        await runExport(name, { out: `${name}.perezdev.json` });
-        break;
-      case "remove":
-        if (await removeFlow(name)) return; // agent gone — back to picker
-        break;
-      case BACK:
-      default:
-        return;
-    }
+    const scoped = { global: scope.kind === "user" };
+    if (action === "show") await runShow(name, scoped);
+    else if (action === "sync") await runUpdate(name, scoped);
+    else if (action === "bump") await runUpdate(name, { ...scoped, bump: true });
+    else if (action === "export") await runExport(name, { ...scoped, out: `${name}.perezdev.json` });
+    else if (action === "remove") await runRemove(name, scoped);
   }
-}
-
-/** Confirm + remove an agent across its tools. Returns true if removed. */
-async function removeFlow(name: string): Promise<boolean> {
-  const spec = await getAgentSpec(name);
-  if (!spec) return true;
-
-  const ok = guardCancel(
-    await p.confirm({ message: `Remove '${name}' from ${spec.targets.join(", ")}?`, initialValue: false }),
-  );
-  if (!ok) return false;
-
-  for (const t of spec.targets) await getAdapter(t).remove(spec);
-  await removeAgentEntry(name);
-  p.log.success(`Removed '${name}'.`);
-  return true;
 }

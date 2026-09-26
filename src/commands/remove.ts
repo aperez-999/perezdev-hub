@@ -1,52 +1,25 @@
 import pc from "picocolors";
-import { getAdapter } from "../adapters/registry.js";
-import { getAgentSpec, getMcpEntry, removeAgentEntry } from "../core/lockfile.js";
-import { removeMcpServer } from "../core/mcp-install.js";
-import { p, guardCancel } from "../ui/prompts.js";
+import { getAgentSpec, getMcpEntry } from "../core/lockfile.js";
+import { planChanges } from "../core/install.js";
+import { resolveScope, type ScopeOptions } from "../core/scope.js";
+import { confirmAndApply, type ApplyOptions } from "../ui/apply.js";
+import { p, intro } from "../ui/prompts.js";
 
-/** Remove a managed agent (or standalone MCP server) by name/id across tools. */
-export async function runRemove(name: string): Promise<void> {
-  p.intro(pc.bgRed(pc.black(" perezdev remove ")));
+export interface RemoveOptions extends ScopeOptions, Pick<ApplyOptions, "yes" | "dryRun"> {}
 
-  const spec = await getAgentSpec(name);
-  if (!spec) {
-    // Fall back to a standalone MCP server with this id.
-    const mcp = await getMcpEntry(name);
-    if (mcp) {
-      const ok = guardCancel(
-        await p.confirm({ message: `Remove MCP server '${name}' from ${mcp.targets.join(", ")}?`, initialValue: false }),
-      );
-      if (!ok) {
-        p.cancel("Aborted.");
-        process.exit(0);
-      }
-      await removeMcpServer(name);
-      p.outro(`${pc.green("✓")} Removed MCP server '${name}'.`);
-      return;
-    }
-    p.cancel(`No managed agent or MCP server named '${name}'. Run ${pc.cyan("perezdev list")}.`);
+/** Remove a managed agent (or standalone MCP server) from every tool and the lockfile. */
+export async function runRemove(name: string, opts: RemoveOptions = {}): Promise<void> {
+  const scope = await resolveScope(opts);
+  intro("remove", scope);
+
+  const isAgent = Boolean(await getAgentSpec(scope, name));
+  if (!isAgent && !(await getMcpEntry(scope, name))) {
+    p.cancel(`No agent or MCP server named '${name}'. Run ${pc.cyan("perezdev list")}.`);
     process.exit(1);
   }
 
-  const confirm = guardCancel(
-    await p.confirm({
-      message: `Remove '${name}' from ${spec.targets.join(", ")} (backups restored)?`,
-    }),
-  );
-  if (!confirm) {
-    p.cancel("Aborted.");
-    process.exit(0);
-  }
-
-  const removedFrom: string[] = [];
-  for (const t of spec.targets) {
-    if (await getAdapter(t).remove(spec)) removedFrom.push(t);
-  }
-  await removeAgentEntry(name);
-
-  p.outro(
-    removedFrom.length > 0
-      ? `${pc.green("✓")} Removed '${name}' from ${removedFrom.join(", ")}.`
-      : `Lockfile entry cleared. No files were present to remove.`,
-  );
+  const plan = await planChanges(scope, isAgent ? { removeAgents: [name] } : { removeMcp: [name] });
+  await confirmAndApply(plan, `Remove '${name}'?`, opts);
+  if (opts.dryRun) return;
+  p.outro(`${pc.green("✓")} Removed '${name}'.`);
 }
