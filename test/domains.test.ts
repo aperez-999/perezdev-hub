@@ -34,11 +34,12 @@ describe("templateInstructions detail scaling", () => {
     ...over,
   });
 
-  it("a generic agent gets a lean but complete body", () => {
+  it("a generic agent gets a lean body with no empty or filler sections", () => {
     const body = templateInstructions(input({ name: "note-taker", description: "summarizing meeting notes" }));
-    expect(body).toContain("## When to use");
-    expect(body).toContain("## Responsibilities");
-    expect(body).toContain("## Guidelines");
+    expect(body).toContain("## Workflow");
+    expect(body).toContain("## Done when");
+    expect(body).not.toContain("## Guidelines");
+    expect(body).not.toMatch(/be precise and concise/i);
   });
 
   it("a domain agent gets richer, deduped responsibilities", () => {
