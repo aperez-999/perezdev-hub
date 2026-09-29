@@ -22,19 +22,10 @@ export async function synthesizeInstructions(input: GenerateInput): Promise<stri
   }
 
   const system = [
-    "You author the instruction body of a custom AI coding agent — a SKILL.md that drives full, hands-off automation when the user triggers it.",
-    "Write specifically for THIS agent's job. Do not produce generic boilerplate: every section must be concrete to the stated purpose, domain, and stack. If the purpose is about accessibility, talk about ARIA/contrast/keyboard nav — not generic 'review for bugs'.",
-    "Output GitHub-flavored markdown only. No YAML frontmatter, no surrounding code fences, no preamble like 'Here is'.",
-    "Structure, in this order:",
-    "- One sentence stating who the agent is.",
-    "- '## When to use' — the trigger conditions.",
-    "- '## Responsibilities' — what it owns, specific to the job.",
-    "- '## Workflow' — a numbered, end-to-end procedure it follows to complete the task without hand-holding.",
-    "- '## Guidelines' — concrete dos/don'ts for this domain.",
-    "- '## Definition of done' — checks that prove the task is complete.",
-    "- '## Output' — what to report and how.",
-    "- '## Guardrails' — scope limits and safety.",
-    "Be detailed and accurate. Prefer specific, checkable instructions over vague advice.",
+    "You write the instruction body of a SKILL.md for an AI coding agent. The skill's name and its when-to-use description are stored separately in frontmatter, so don't restate them.",
+    "Make every line specific to this agent's job and stack; an accessibility reviewer talks about ARIA, contrast, and keyboard navigation, not generic bug hunting. Leave out advice any competent agent already follows (be concise, follow conventions, ask when blocked).",
+    "Output GitHub-flavored markdown only: no frontmatter, no code fence around the whole answer, no preamble.",
+    "Structure: one sentence naming the role; '## Focus' (what this agent checks or owns); '## Workflow' (numbered steps that take the task from start to verified finish); '## Guidelines' (domain-specific dos and don'ts, only if there are real ones); '## Done when' (checkable conditions). Skip a section rather than pad it.",
   ].join("\n");
 
   const userPrompt = [
@@ -43,21 +34,24 @@ export async function synthesizeInstructions(input: GenerateInput): Promise<stri
     `Purpose (when to use): ${input.description}`,
     input.behaviors.length ? `Desired behaviors:\n${input.behaviors.map((b) => `- ${b}`).join("\n")}` : "",
     input.allowedTools.length ? `Tools it may use: ${input.allowedTools.join(", ")}` : "",
-    "Write the full, specific instruction body now.",
   ]
     .filter(Boolean)
     .join("\n\n");
 
   try {
     const client = new mod.default();
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 6000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
+    // Thinking is always on for this model; effort is the depth control.
+    // On a policy decline the API retries on a fallback model in the same call.
+    const response = await client.beta.messages.create({
+      model: "claude-opus-5-5",
+      max_tokens: 16000,
+      output_config: { effort: "medium" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
       system,
       messages: [{ role: "user", content: userPrompt }],
     });
+    if (response.stop_reason !== "end_turn") return null;
 
     const text = (response.content ?? [])
       .filter((b) => b.type === "text")
@@ -73,9 +67,12 @@ export async function synthesizeInstructions(input: GenerateInput): Promise<stri
 
 /** Minimal structural shape of the Anthropic client we rely on. */
 interface AnthropicLike {
-  messages: {
-    create(params: Record<string, unknown>): Promise<{
-      content?: Array<{ type: string; text?: string }>;
-    }>;
+  beta: {
+    messages: {
+      create(params: Record<string, unknown>): Promise<{
+        stop_reason?: string;
+        content?: Array<{ type: string; text?: string }>;
+      }>;
+    };
   };
 }
