@@ -34,3 +34,11 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Pack and run the published entry point
+        run: |
+          npm pack --silent
+          npx -y ./perezdev-hub-*.tgz --version
