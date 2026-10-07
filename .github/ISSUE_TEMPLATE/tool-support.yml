@@ -1,0 +1,26 @@
+name: Tool support
+description: A tool changed where it reads skills, rules, or MCP config — or a new tool to support
+title: "tool: "
+labels: ["tool-support"]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool and version
+      placeholder: Cursor 2.4
+    validations:
+      required: true
+  - type: textarea
+    id: paths
+    attributes:
+      label: Where it actually reads from
+      description: Project and user scope, for agents/skills/rules and MCP. Include the file format if it differs (frontmatter fields, JSON key).
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Link to the tool's documentation
+      description: Official docs or source, please — not a blog post.
+    validations:
+      required: true
