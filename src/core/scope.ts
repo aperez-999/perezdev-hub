@@ -1,4 +1,4 @@
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { home, perezdevDir } from "./config.js";
 import { exists } from "../util/fs-safe.js";
 
@@ -60,8 +60,8 @@ export function scopeLabel(scope: Scope, cwd: string = process.cwd()): string {
   return `project (${relative(cwd, scope.root) || "."})`;
 }
 
-/** Display a path relative to the scope root (`~/…` for user scope). */
+/** Display a path relative to the scope root (`~/…` for user scope), with `/` on every platform. */
 export function displayPath(scope: Scope, path: string): string {
-  const rel = relative(scope.root, path);
+  const rel = relative(scope.root, path).split(sep).join("/");
   return scope.kind === "user" ? `~/${rel}` : rel;
 }

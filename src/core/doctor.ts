@@ -3,7 +3,7 @@ import { mcpEntryMatches, mcpFormat } from "../adapters/mcp-config.js";
 import { detectedTools } from "../adapters/tools.js";
 import { basename } from "node:path";
 import { readSection } from "../adapters/context.js";
-import { readIfExists } from "../util/fs-safe.js";
+import { readIfExists, sameText } from "../util/fs-safe.js";
 import { contextSections } from "./context.js";
 import type { McpDependency, ToolId } from "./agent-spec.js";
 import { commit } from "./install.js";
@@ -33,7 +33,7 @@ const RANK: Record<DoctorStatus, number> = { ok: 0, "tool-absent": 1, modified: 
 async function fileStatus(path: string, expected: string): Promise<DoctorStatus> {
   const actual = await readIfExists(path);
   if (actual === null) return "missing";
-  return actual === expected ? "ok" : "modified";
+  return sameText(actual, expected) ? "ok" : "modified";
 }
 
 async function mcpStatus(path: string, dep: McpDependency): Promise<DoctorStatus> {
@@ -86,7 +86,7 @@ export async function diagnose(scope: Scope): Promise<DoctorItem[]> {
     for (const section of await contextSections(scope, lock)) {
       if (section.body === null) continue;
       const actual = readSection(await readIfExists(section.path));
-      const status: DoctorStatus = actual === null ? "missing" : actual === section.body.trim() ? "ok" : "modified";
+      const status: DoctorStatus = actual === null ? "missing" : sameText(actual, section.body.trim()) ? "ok" : "modified";
       push({ kind: "context", name: basename(section.path) }, { status, path: section.path });
     }
   }

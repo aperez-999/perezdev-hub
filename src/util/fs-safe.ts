@@ -35,6 +35,15 @@ export async function atomicWrite(path: string, contents: string): Promise<void>
   await rename(tmp, path);
 }
 
+/**
+ * Same text, ignoring CRLF vs LF. Git for Windows checks files out with CRLF by
+ * default, which must not count as drift.
+ */
+export function sameText(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.replace(/\r\n/g, "\n") === b.replace(/\r\n/g, "\n");
+}
+
 /** Remove a file if it exists. No-op otherwise. */
 export async function removeIfExists(path: string): Promise<boolean> {
   if (!(await exists(path))) return false;

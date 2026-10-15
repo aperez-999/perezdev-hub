@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { AgentSpec, McpDependency, ToolId } from "../core/agent-spec.js";
 import type { Scope } from "../core/scope.js";
-import { readIfExists } from "../util/fs-safe.js";
+import { readIfExists, sameText } from "../util/fs-safe.js";
 import { upsertSection } from "./context.js";
 import { mcpFormat } from "./mcp-config.js";
 import { renderRule, renderSkill, renderWindsurfRule } from "./render.js";
@@ -144,7 +144,7 @@ export class Planner {
 
   /** Planned files that actually change something. */
   files(): PlannedFile[] {
-    return [...this.pending.values()].filter((f) => f.previous !== f.contents);
+    return [...this.pending.values()].filter((f) => !sameText(f.previous, f.contents));
   }
 
   /** Every planned path, changed or not (used to tell stale files from current ones). */

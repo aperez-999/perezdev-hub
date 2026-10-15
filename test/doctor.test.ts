@@ -52,6 +52,12 @@ describe("doctor", () => {
     expect((await diagnose(box.project))[0]!.status).toBe("modified");
   });
 
+  it("treats a CRLF checkout (Git for Windows) as unchanged", async () => {
+    await commit(box.project, { agents: [spec("reviewer", ["claude-code"])] });
+    await writeFile(skillPath(), (await readFile(skillPath(), "utf8")).replace(/\n/g, "\r\n"));
+    expect((await diagnose(box.project))[0]!.status).toBe("ok");
+  });
+
   it("tolerates keys a tool adds to its own MCP entries", async () => {
     await commit(box.project, { agents: [spec("reviewer", ["claude-code"], [dep("docs")])] });
     const mcp = join(box.repo, ".mcp.json");

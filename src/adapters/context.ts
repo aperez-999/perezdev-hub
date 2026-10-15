@@ -22,7 +22,7 @@ export function readSection(raw: string | null): string | null {
   const start = raw.indexOf(BEGIN);
   const end = raw.indexOf(END);
   if (start < 0 || end < start) return null;
-  return raw.slice(start + BEGIN.length, end).trim();
+  return raw.slice(start + BEGIN.length, end).replace(/\r\n/g, "\n").trim();
 }
 
 /**
