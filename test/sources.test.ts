@@ -135,7 +135,7 @@ describe("adding skills", () => {
     expect(await readFile(join(box.repo, ".claude/skills/pdf/SKILL.md"), "utf8")).toBe(original);
     const script = join(box.repo, ".claude/skills/pdf/scripts/fill.py");
     expect(await readFile(script, "utf8")).toBe("#!/usr/bin/env python3\nprint(1)\n");
-    expect((await stat(script)).mode & 0o111).not.toBe(0);
+    if (process.platform !== "win32") expect((await stat(script)).mode & 0o111).not.toBe(0);
     expect(await readFile(join(box.repo, ".clinerules/pdf.md"), "utf8")).toContain("**Use when working with PDF files.**");
     expect(summarize(await diagnose(box.project)).ok).toBe(true);
   });

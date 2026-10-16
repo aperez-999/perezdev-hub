@@ -95,7 +95,7 @@ describe("fs-safe", () => {
     expect(await readFile(f, "utf8")).toBe("hello");
   });
 
-  it("atomicWrite keeps an existing file's permissions", async () => {
+  it.skipIf(process.platform === "win32")("atomicWrite keeps an existing file's permissions", async () => {
     const f = join(dir, "secret.json");
     await writeFile(f, "{}", { mode: 0o600 });
     await atomicWrite(f, '{"a":1}');

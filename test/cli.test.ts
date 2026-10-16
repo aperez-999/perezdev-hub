@@ -1,19 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { createRequire } from "node:module";
 import { promisify } from "node:util";
 import { useSandbox } from "./helpers.js";
 
 const run = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
-const tsx = join(root, "node_modules/.bin/tsx");
+// tsx's own entry script, run with this Node — `.bin/tsx` is a shell shim that Windows can't exec.
+const tsx = join(dirname(createRequire(import.meta.url).resolve("tsx/package.json")), "dist", "cli.mjs");
 const box = useSandbox();
 
 /** Run the real CLI the way CI would: non-interactive, isolated HOME, inside the sandbox repo. */
 async function cli(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
-    const { stdout, stderr } = await run(tsx, [join(root, "src/index.ts"), ...args], {
+    const { stdout, stderr } = await run(process.execPath, [tsx, join(root, "src/index.ts"), ...args], {
       cwd: box.repo,
       env: { ...process.env, HOME: box.home, CI: "1", NO_COLOR: "1" },
     });

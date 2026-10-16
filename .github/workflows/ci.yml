@@ -6,39 +6,43 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    name: ${{ matrix.os }} · Node ${{ matrix.node-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [20, 22]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
-
-      - name: Audit runtime dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
 
       - name: Pack and run the published entry point
+        shell: bash
         run: |
           npm pack --silent
           npx -y ./perezdev-hub-*.tgz --version
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=high
