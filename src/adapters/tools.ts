@@ -75,10 +75,12 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     name: "GitHub Copilot",
     extensions: ["github.copilot"],
     docs: "https://code.visualstudio.com/docs/copilot/customization/agent-skills",
-    // Workspace MCP (.vscode/mcp.json) uses a different `servers` schema; not managed yet.
+    // MCP: https://code.visualstudio.com/docs/copilot/reference/mcp-configuration — the user-level
+    // file lives in VS Code's profile folder (platform-specific), so only the workspace file is managed.
     user: { agents: { kind: "skill", dirs: [".agents/skills", ".claude/skills", ".copilot/skills"] }, signals: [".copilot", ".config/github-copilot"] },
     project: {
       agents: { kind: "skill", dirs: [".agents/skills", ".claude/skills", ".github/skills"] },
+      mcp: ".vscode/mcp.json",
       signals: [".github/copilot-instructions.md", ".github/instructions", ".github/skills"],
     },
     legacy: (name) => [`.config/github-copilot/prompts/${name}.md`],

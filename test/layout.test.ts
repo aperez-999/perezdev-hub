@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { agentFiles, mcpFiles } from "../src/adapters/plan.js";
 import { isOwned, renderSkill, renderWindsurfRule } from "../src/adapters/render.js";
 import { mcpFormat } from "../src/adapters/mcp-config.js";
@@ -10,7 +10,7 @@ import { dep, spec } from "./helpers.js";
 
 const repo = "/work/app";
 const project = projectScope(repo);
-const rel = (paths: { path: string }[], root = repo) => paths.map((p) => p.path.slice(root.length + 1)).sort();
+const rel = (paths: { path: string }[], root = repo) => paths.map((p) => relative(root, p.path).split(sep).join("/")).sort();
 
 describe("agent file layout", () => {
   it("writes a Claude Code skill to .claude/skills/<name>/SKILL.md", () => {
@@ -56,14 +56,15 @@ describe("agent file layout", () => {
     expect(agentFiles(spec("reviewer", ["windsurf"]), userScope())).toEqual([]);
   });
 
-  it("maps MCP configs per scope and skips tools whose MCP format isn't managed", () => {
+  it("maps MCP configs per scope and skips tools whose MCP config isn't managed", () => {
     process.env.HOME = "/home/dev";
-    expect(mcpFiles(["claude-code", "cursor", "codex", "copilot"], project).map((f) => f.path)).toEqual([
+    expect(mcpFiles(["claude-code", "cursor", "codex", "copilot", "cline"], project).map((f) => f.path)).toEqual([
       join(repo, ".mcp.json"),
       join(repo, ".cursor/mcp.json"),
       join(repo, ".codex/config.toml"),
+      join(repo, ".vscode/mcp.json"),
     ]);
-    expect(mcpFiles(["claude-code"], userScope()).map((f) => f.path)).toEqual(["/home/dev/.claude.json"]);
+    expect(mcpFiles(["claude-code", "copilot"], userScope()).map((f) => f.path)).toEqual([join("/home/dev", ".claude.json")]);
   });
 
   it("documents every tool", () => {
@@ -110,6 +111,16 @@ describe("MCP config editing (JSON)", () => {
     const raw = json.merge("/c.json", null, [dep("alpha"), dep("beta")]);
     expect(Object.keys(JSON.parse(json.prune("/c.json", raw, ["alpha"])!).mcpServers)).toEqual(["beta"]);
     expect(json.prune("/c.json", raw, ["missing"])).toBeNull();
+  });
+});
+
+describe("MCP config editing (VS Code)", () => {
+  it("writes Copilot's `servers` map with the required stdio type", () => {
+    const vscode = mcpFormat(join("/repo", ".vscode", "mcp.json"));
+    const raw = JSON.stringify({ inputs: [{ id: "token" }] });
+    const out = JSON.parse(vscode.merge("/repo/.vscode/mcp.json", raw, [dep("docs")]));
+    expect(out).toEqual({ inputs: [{ id: "token" }], servers: { docs: { type: "stdio", command: "npx", args: ["-y", "@example/docs"] } } });
+    expect(vscode.prune("/repo/.vscode/mcp.json", JSON.stringify({ servers: { docs: {} } }), ["docs"])).toBe("");
   });
 });
 
@@ -166,3 +177,4 @@ describe("trigger descriptions", () => {
     expect(triggerDescription("Use when touching migrations.")).toBe("Use when touching migrations.");
   });
 });
+

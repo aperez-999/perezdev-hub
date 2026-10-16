@@ -1,10 +1,11 @@
+import { basename, dirname } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import type { McpDependency } from "../core/agent-spec.js";
 
 /**
- * Reading and editing the files tools keep MCP servers in. JSON configs
- * (Claude Code, Cursor, Roo) hold a top-level `mcpServers` map; Codex keeps
- * `[mcp_servers.<name>]` tables in TOML. Either way perezdev only touches the
+ * Reading and editing the files tools keep MCP servers in. JSON configs hold a
+ * top-level `mcpServers` map (Claude Code, Cursor, Roo) or `servers` map (VS
+ * Code / Copilot); Codex keeps `[mcp_servers.<name>]` tables in TOML. Either way perezdev only touches the
  * servers it's asked to and leaves every other byte alone, and a file it can't
  * parse is an error rather than something to overwrite.
  */
@@ -64,29 +65,38 @@ function parseJsonConfig(path: string, raw: string | null): Record<string, unkno
   return root as Record<string, unknown>;
 }
 
-const json: McpConfigFormat = {
-  servers: (path, raw) => inert(parseJsonConfig(path, raw).mcpServers),
-  merge(path, raw, deps) {
-    const root = parseJsonConfig(path, raw);
-    const servers = inert(root.mcpServers);
-    for (const dep of deps) servers[dep.name] = mcpEntry(dep);
-    root.mcpServers = servers;
-    return JSON.stringify(root, null, 2) + "\n";
-  },
-  prune(path, raw, names) {
-    if (raw === null) return null;
-    const root = parseJsonConfig(path, raw);
-    const servers = inert(root.mcpServers);
-    const present = names.filter((n) => n in servers);
-    if (present.length === 0) return null;
-    for (const n of present) delete servers[n];
-    // A config holding nothing but an empty server map was ours to begin with — remove it.
-    if (Object.keys(servers).length === 0 && Object.keys(root).every((k) => k === "mcpServers")) return "";
-    root.mcpServers = servers;
-    return JSON.stringify(root, null, 2) + "\n";
-  },
-  validate: (text) => void JSON.parse(text),
-};
+/**
+ * A JSON config with servers under `key`. Claude Code, Cursor, and Roo use
+ * `mcpServers`; VS Code (Copilot) uses `servers` and requires `"type": "stdio"`.
+ */
+function jsonFormat(key: string, extra: Record<string, string> = {}): McpConfigFormat {
+  return {
+    servers: (path, raw) => inert(parseJsonConfig(path, raw)[key]),
+    merge(path, raw, deps) {
+      const root = parseJsonConfig(path, raw);
+      const servers = inert(root[key]);
+      for (const dep of deps) servers[dep.name] = { ...extra, ...mcpEntry(dep) };
+      root[key] = servers;
+      return JSON.stringify(root, null, 2) + "\n";
+    },
+    prune(path, raw, names) {
+      if (raw === null) return null;
+      const root = parseJsonConfig(path, raw);
+      const servers = inert(root[key]);
+      const present = names.filter((n) => n in servers);
+      if (present.length === 0) return null;
+      for (const n of present) delete servers[n];
+      // A config holding nothing but an empty server map was ours to begin with — remove it.
+      if (Object.keys(servers).length === 0 && Object.keys(root).every((k) => k === key)) return "";
+      root[key] = servers;
+      return JSON.stringify(root, null, 2) + "\n";
+    },
+    validate: (text) => void JSON.parse(text),
+  };
+}
+
+const json = jsonFormat("mcpServers");
+const vscode = jsonFormat("servers", { type: "stdio" });
 
 // ---------------------------------------------------------------- TOML
 
@@ -165,7 +175,9 @@ const toml: McpConfigFormat = {
   validate: (text) => void parseToml(text),
 };
 
-/** The format for a config path, by extension. */
+/** The format for a config path: Codex's TOML, VS Code's `servers` JSON, or `mcpServers` JSON. */
 export function mcpFormat(path: string): McpConfigFormat {
-  return path.endsWith(".toml") ? toml : json;
+  if (path.endsWith(".toml")) return toml;
+  if (basename(dirname(path)) === ".vscode" && basename(path) === "mcp.json") return vscode;
+  return json;
 }

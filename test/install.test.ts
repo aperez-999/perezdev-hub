@@ -108,17 +108,19 @@ describe("reconciling changes", () => {
   });
 
   it("installs and removes a standalone catalog server", async () => {
-    await commit(box.project, { mcp: [toStandalone(getMcpServer("context7")!, ["claude-code", "codex", "copilot"])] });
+    await commit(box.project, { mcp: [toStandalone(getMcpServer("context7")!, ["claude-code", "codex", "copilot", "cline"])] });
     expect(await servers(join(box.repo, ".mcp.json"))).toEqual(["context7"]);
     const codex = join(box.repo, ".codex/config.toml");
     expect(await read(codex)).toContain('[mcp_servers.context7]\ncommand = "npx"');
-    // Copilot's workspace MCP schema isn't managed, so it isn't recorded as a target.
-    expect((await readLock(box.project)).mcpServers.context7!.targets).toEqual(["claude-code", "codex"]);
+    expect(JSON.parse(await read(join(box.repo, ".vscode/mcp.json"))).servers.context7.type).toBe("stdio");
+    // Cline keeps MCP servers in its extension storage, which isn't managed, so it isn't recorded as a target.
+    expect((await readLock(box.project)).mcpServers.context7!.targets).toEqual(["claude-code", "codex", "copilot"]);
 
     // Configs perezdev created and that are now empty are deleted, not left as `{"mcpServers": {}}`.
     await commit(box.project, { removeMcp: ["context7"] });
     expect(await exists(join(box.repo, ".mcp.json"))).toBe(false);
     expect(await exists(codex)).toBe(false);
+    expect(await exists(join(box.repo, ".vscode"))).toBe(false);
   });
 });
 
@@ -131,7 +133,7 @@ describe("user scope", () => {
     const json = JSON.parse(await read(config));
     expect(json.numStartups).toBe(7);
     expect(Object.keys(json.mcpServers)).toEqual(["context7"]);
-    expect((await stat(config)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect((await stat(config)).mode & 0o777).toBe(0o600);
   });
 
   it("skips Windsurf (no per-agent global file) and errors when nothing else is targeted", async () => {
