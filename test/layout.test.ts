@@ -178,3 +178,28 @@ describe("trigger descriptions", () => {
   });
 });
 
+describe("frontmatter every loader can parse", () => {
+  const tricky = [
+    "review: code with colons, #hashes and 'quotes'",
+    '- starts like a list and has "double quotes"',
+    "yes",
+    "a description that spans\ntwo lines",
+    "unicode — dashes, ümlauts, and emoji-free text",
+    "use when touching `src/**/*.ts` @ 100% {braces} [brackets]",
+  ];
+
+  it("round-trips descriptions and tools through a real YAML parser", async () => {
+    const { parse } = await import("yaml");
+    for (const description of tricky) {
+      const s = { ...spec("tricky", ["claude-code"]), description, allowedTools: ["Bash(git diff:*)", "Read"] };
+      for (const md of [renderSkill(s), renderWindsurfRule(s)]) {
+        const fm = parse(/^---\n([\s\S]*?)\n---/.exec(md)![1]!) as Record<string, unknown>;
+        expect(typeof fm.description, md).toBe("string");
+        expect((fm.description as string).toLowerCase()).toContain(description.split("\n")[0]!.slice(0, 12).toLowerCase());
+      }
+      const fm = parse(/^---\n([\s\S]*?)\n---/.exec(renderSkill(s))![1]!) as Record<string, unknown>;
+      expect(fm.name).toBe("tricky");
+      expect(fm["allowed-tools"]).toEqual(["Bash(git diff:*)", "Read"]);
+    }
+  });
+});
