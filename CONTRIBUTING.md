@@ -20,7 +20,7 @@ src/
   adapters/tools.ts   where every tool reads agents + MCP servers (the only per-tool code)
   adapters/plan.ts    spec → files, skill-directory dedupe, batched MCP merges
   adapters/render.ts  SKILL.md / rule markdown, ownership marker
-  adapters/mcp-config.ts  MCP configs: JSON `mcpServers` and Codex TOML, surgical merge + prune
+  adapters/mcp-config.ts  MCP configs: JSON (`mcpServers`, VS Code `servers`) and Codex TOML, surgical merge + prune
   adapters/context.ts perezdev's marked block inside AGENTS.md / CLAUDE.md
   core/install.ts     plan → preview → apply (backup, atomic write, verify, rollback)
   core/doctor.ts      lockfile vs disk: ok / missing / modified / tool-absent
@@ -55,6 +55,17 @@ Only maintained packages, launched with `npx`, `uvx`, `docker`, or `node`. Put r
 - Never overwrite or delete a file perezdev didn't create: it must carry the ownership marker (`isOwned`) or be recorded in the lockfile.
 - No network calls except the explicit ones (`add`/`upgrade` from GitHub, profile URLs, optional Claude API).
 - No secrets in commits or fixtures.
+
+## Releasing
+
+Bump the version and push the tag; [`release.yml`](.github/workflows/release.yml) publishes to npm with provenance and creates the GitHub release from CHANGELOG.md:
+
+```bash
+npm version minor            # or patch / major — updates package.json and tags vX.Y.Z
+git push origin main --follow-tags
+```
+
+Move the `Unreleased` notes in CHANGELOG.md under the new version first.
 
 ## Commits
 

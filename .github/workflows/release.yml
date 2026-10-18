@@ -1,0 +1,46 @@
+# Publishes to npm and creates a GitHub release when a version tag is pushed:
+#   npm version patch && git push origin main --follow-tags
+# npm authenticates with trusted publishing (OIDC) — no NPM_TOKEN secret. Set it up once
+# at npmjs.com → perezdev-hub → Settings → Trusted publishing (workflow: release.yml).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm trusted publishing and provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
+
+      - name: Check the tag matches package.json
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match package.json ($version)"; exit 1
+          fi
+
+      - run: npm ci
+
+      # prepublishOnly runs typecheck, tests, and the build first.
+      - run: npm publish --provenance --access public
+
+      - name: Create the GitHub release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" 'index($0, "## " v " ") == 1 { found = 1; next } /^## / && found { exit } found' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
