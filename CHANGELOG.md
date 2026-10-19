@@ -6,6 +6,7 @@ A refocus on one job: portable agent config with drift detection.
 
 ### Breaking
 
+- **Requires Node 22 or newer.** Node 20 reached end of life in April 2026.
 - **Project scope is the default inside a git repository.** Files go into the repo and the lockfile is `perezdev.lock.json` at its root. Use `-g` for the previous home-directory behavior.
 - **Tool paths now match each tool's documentation.** Cursor and Copilot get Agent Skills (`.agents/skills/`) instead of `~/.cursor/rules` and `~/.config/github-copilot/prompts`; Codex gets skills instead of `~/.codex/prompts`; Cline user rules go to `~/Documents/Cline/Rules`; Windsurf rules are project-only; Claude Code MCP servers go to `~/.claude.json` / `.mcp.json` instead of `~/.claude/settings.json`, which Claude Code doesn't read servers from. Run `perezdev sync -g` once to move existing agents; old perezdev-generated files are removed.
 - Removed the fullscreen TUI, Chat, News, `fix`, `autofix`, `map`, the Python engine, and the Superpowers installer. The CLI is the product.

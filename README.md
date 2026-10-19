@@ -74,7 +74,7 @@ npm install -g perezdev-hub   # provides `perezdev` (and the short alias `pdh`)
 npx perezdev-hub <command>
 ```
 
-Node 20 or newer.
+Node 22 or newer.
 
 ## Scope
 
@@ -224,7 +224,7 @@ npm run typecheck
 npm run dev -- doctor   # run from source
 ```
 
-CI runs the suite on Linux, macOS, and Windows with Node 20 and 22. Releases are published from a version tag by [`release.yml`](.github/workflows/release.yml) with npm provenance.
+CI runs the suite on Linux, macOS, and Windows with Node 22 and 24. Releases are published from a version tag by [`release.yml`](.github/workflows/release.yml) with npm provenance.
 
 The whole tool layer is one table in [`src/adapters/tools.ts`](src/adapters/tools.ts). Supporting a new tool, or fixing a path that moved, is usually a single entry there plus a test in `test/layout.test.ts`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -11,7 +11,7 @@ npm run typecheck
 npm run dev -- status
 ```
 
-Node 20 or newer.
+Node 22 or newer.
 
 ## Layout
 

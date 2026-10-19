@@ -19,7 +19,7 @@ describe("safeguards", () => {
     const f = join(home, "mcp.json");
     await writeFile(f, "{}");
     const bak = await cacheBackup(f, "2026-06-13T00:00:00.000Z");
-    expect(bak).toMatch(/\.config\/perezdev\/backups\/mcp\.json\..*\.bak$/);
+    expect(bak).toBe(join(home, ".config", "perezdev", "backups", "mcp.json.2026-06-13T00-00-00-000Z.bak"));
     const list = await readdir(join(home, ".config", "perezdev", "backups"));
     expect(list.length).toBe(1);
   });
