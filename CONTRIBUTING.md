@@ -56,6 +56,10 @@ Only maintained packages, launched with `npx`, `uvx`, `docker`, or `node`. Put r
 - No network calls except the explicit ones (`add`/`upgrade` from GitHub, profile URLs, optional Claude API).
 - No secrets in commits or fixtures.
 
+## The README demo
+
+`docs/demo.gif` is recorded from `docs/demo.tape`. After changing output that appears in it, re-render with `brew install vhs` once, then `npm run build && docs/render-demo.sh`.
+
 ## Releasing
 
 Bump the version and push the tag; [`release.yml`](.github/workflows/release.yml) publishes to npm with provenance and creates the GitHub release from CHANGELOG.md:

@@ -6,6 +6,8 @@
 
 Write your AI agent setup once — skills, rules, and MCP servers — and get it into every coding tool your team uses: **Claude Code, Codex, Cursor, GitHub Copilot, Cline, Windsurf, and Roo Code**. A lockfile records what's installed, and `perezdev doctor` fails CI when the generated files drift.
 
+![perezdev setting up a repo, then catching and fixing a hand-edited skill](docs/demo.gif)
+
 ## What it does
 
 AI coding tools can be taught how your team works, but each one reads that from its own files:
