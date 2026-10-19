@@ -1,4 +1,5 @@
 import pc from "picocolors";
+import { heading, mark } from "../ui/style.js";
 import { detectedTools, toolName } from "../adapters/tools.js";
 import { diagnose, doctorAdvice, summarize } from "../core/doctor.js";
 import { readLock } from "../core/lockfile.js";
@@ -23,7 +24,7 @@ export async function runStatus(opts: ScopeOptions = {}): Promise<void> {
     all: "none detected — all tools",
   };
 
-  console.log(`\n  ${pc.bold("perezdev")} ${pc.dim(`v${version} · ${scopeLabel(scope)}`)}\n`);
+  console.log(`\n  ${mark()} ${pc.dim(`v${version} · ${scopeLabel(scope)}`)}\n`);
   console.log(row("tools", `${resolved.targets.map(toolName).join(", ")} ${pc.dim(`(${source[resolved.source]})`)}`));
   console.log(row("agents", agents.length ? agents.join(", ") : pc.dim("none")));
   console.log(row("mcp", servers.length ? servers.join(", ") : pc.dim("none")));
@@ -34,7 +35,7 @@ export async function runStatus(opts: ScopeOptions = {}): Promise<void> {
 
   if (agents.length + servers.length === 0 && !lock.agentsMd) {
     const here = scope.kind === "project" ? "this repo" : "every project (global)";
-    console.log(`\n  ${pc.bold("Get started")}`);
+    console.log(`\n  ${heading("Get started")}`);
     console.log(`  ${pc.cyan("perezdev init".padEnd(38))} suggest skills, MCP servers, and AGENTS.md for ${here}`);
     console.log(`  ${pc.cyan("perezdev add anthropics/skills --list".padEnd(38))} browse published skills to install`);
     console.log(`  ${pc.cyan("perezdev create".padEnd(38))} describe an agent and generate it`);
@@ -44,7 +45,7 @@ export async function runStatus(opts: ScopeOptions = {}): Promise<void> {
 
   const hints = await statusHints(scope, lock);
   if (hints.length > 0) {
-    console.log(`\n  ${pc.bold("Next")}`);
+    console.log(`\n  ${heading("Next")}`);
     for (const h of hints) console.log(`  ${h}`);
   }
   console.log(`\n  ${pc.dim("perezdev list · perezdev doctor · perezdev --help")}\n`);

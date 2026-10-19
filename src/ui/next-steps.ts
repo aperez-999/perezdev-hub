@@ -7,6 +7,7 @@ import type { Lockfile } from "../core/lockfile.js";
 import { LAUNCHER_HELP, readiness, type Readiness } from "../core/readiness.js";
 import { displayPath, PROJECT_LOCKFILE, type Scope } from "../core/scope.js";
 import { p } from "./prompts.js";
+import { heading } from "./style.js";
 
 /** How each tool picks up what perezdev wrote. Kept to what the tools' docs promise. */
 const ACTIVATION: Record<ToolId, string> = {
@@ -92,7 +93,7 @@ export async function printNextSteps(scope: Scope, lock: Lockfile, opts: { full?
     });
     if (lock.agentsMd) lines.push(`${"Every tool".padEnd(width)}  AGENTS.md (Commands section)`);
     if (state.ci) lines.push(`${"CI".padEnd(width)}  perezdev doctor on every pull request`);
-    p.note(lines.join("\n"), "Where it went");
+    p.note(lines.join("\n"), heading("Where it went"));
   }
 
   const names = Object.keys(lock.agents);
@@ -102,10 +103,10 @@ export async function printNextSteps(scope: Scope, lock: Lockfile, opts: { full?
   const mcpTools = [...tools].filter(([, t]) => t.mcp).map(([id]) => id);
   if (mcpTools.includes("claude-code") && scope.kind === "project") tryLines.push("Claude Code asks once to approve the servers in .mcp.json (or run /mcp).");
   if (mcpTools.includes("codex") && scope.kind === "project") tryLines.push("Codex only loads .codex/config.toml once you trust this project.");
-  if (tryLines.length > 0) p.note(tryLines.join("\n"), "Try it");
+  if (tryLines.length > 0) p.note(tryLines.join("\n"), heading("Try it"));
 
   const missing = prerequisites(state);
-  if (missing.length > 0) p.note(missing.join("\n"), "Before the MCP servers start");
+  if (missing.length > 0) p.note(missing.join("\n"), heading("Before the MCP servers start"));
 
   if (scope.kind === "project") {
     const share: string[] = [];
@@ -113,7 +114,7 @@ export async function printNextSteps(scope: Scope, lock: Lockfile, opts: { full?
     const add = gitAdd(state);
     if (add) share.push(`${add}`, `git commit -m "chore: add AI agent setup (perezdev)"`);
     if (!state.ci) share.push(`perezdev ci ${pc.dim("— fail pull requests when these files drift")}`);
-    if (share.length > 0) p.note(share.join("\n"), `Share it ${pc.dim(`(${PROJECT_LOCKFILE} + generated files)`)}`);
+    if (share.length > 0) p.note(share.join("\n"), `${heading("Share it")} ${pc.dim(`(${PROJECT_LOCKFILE} + generated files)`)}`);
   }
 }
 

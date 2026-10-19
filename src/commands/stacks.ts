@@ -1,4 +1,5 @@
 import pc from "picocolors";
+import { heading } from "../ui/style.js";
 import { STACKS, getStack } from "../registry/index.js";
 import { stackChanges } from "../core/stack.js";
 import { planChanges } from "../core/install.js";
@@ -14,7 +15,7 @@ export interface StackOptions extends ScopeOptions, ApplyOptions {
 
 /** List the bundled stacks. */
 export function printStacks(): void {
-  console.log(pc.bold("\n  Stacks") + pc.dim("  (perezdev stack <id>)\n"));
+  console.log(`\n  ${heading("Stacks")}${pc.dim("  (perezdev stack <id>)")}\n`);
   const width = Math.max(...STACKS.map((s) => s.id.length));
   for (const s of STACKS) {
     const parts = `${s.skillPresets.length} skills, ${s.mcpServers.length} MCP`;

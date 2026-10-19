@@ -1,5 +1,6 @@
 import * as p from "@clack/prompts";
 import pc from "picocolors";
+import { mark } from "./style.js";
 import { previewDiff } from "../util/fs-safe.js";
 import type { PlannedFile } from "../adapters/plan.js";
 import { toolName } from "../adapters/tools.js";
@@ -23,7 +24,7 @@ export function isInteractive(): boolean {
 
 /** `perezdev <cmd> · project (.)` — every command says where it's acting. */
 export function intro(command: string, scope: Scope): void {
-  p.intro(`${pc.bold(`perezdev ${command}`)} ${pc.dim(`· ${scopeLabel(scope)}`)}`);
+  p.intro(`${mark(command)} ${pc.dim(`· ${scopeLabel(scope)}`)}`);
 }
 
 const MAX_DIFF_LINES = 30;

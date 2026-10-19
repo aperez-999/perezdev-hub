@@ -1,4 +1,5 @@
 import pc from "picocolors";
+import { mark } from "../ui/style.js";
 import { listEntries, listMcpEntries } from "../core/lockfile.js";
 import { resolveScope, scopeLabel, type ScopeOptions } from "../core/scope.js";
 import { toolName } from "../adapters/tools.js";
@@ -30,7 +31,7 @@ export async function runList(opts: ListOptions = {}): Promise<void> {
     return;
   }
 
-  console.log(pc.dim(`\n  ${scopeLabel(scope)}\n`));
+  console.log(`\n  ${mark("list")} ${pc.dim(`· ${scopeLabel(scope)}`)}\n`);
   if (agents.length === 0 && mcp.length === 0) {
     console.log(pc.dim("  Nothing installed. Try ") + pc.cyan("perezdev init") + pc.dim(" or ") + pc.cyan("perezdev presets") + "\n");
     return;

@@ -1,4 +1,5 @@
 import pc from "picocolors";
+import { mark } from "../ui/style.js";
 import { diagnose, repair, doctorSubject, summarize, doctorExitCode, doctorAdvice, type DoctorItem } from "../core/doctor.js";
 import { displayPath, resolveScope, scopeLabel, type ScopeOptions } from "../core/scope.js";
 import { toolName } from "../adapters/tools.js";
@@ -36,7 +37,7 @@ export async function runDoctor(opts: DoctorOptions = {}): Promise<void> {
     return;
   }
 
-  console.log(pc.dim(`\n  ${scopeLabel(scope)}`));
+  console.log(`\n  ${mark("doctor")} ${pc.dim(`· ${scopeLabel(scope)}`)}\n`);
   if (repaired > 0) console.log(`  ${pc.green("✓")} repaired ${repaired} item(s)`);
   const problems = final.filter((i) => i.status !== "ok");
   for (const i of problems) {
