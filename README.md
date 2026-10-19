@@ -183,7 +183,7 @@ Paths are relative to the repo root (project) or `~` (user). Each was checked ag
 | [Claude Code](https://code.claude.com/docs/en/skills) | `.claude/skills/<name>/SKILL.md` | `~/.claude/skills/…` | `.mcp.json` / `~/.claude.json` |
 | [Codex](https://learn.chatgpt.com/docs/build-skills) | `.agents/skills/<name>/SKILL.md` | `~/.agents/skills/…` | [`.codex/config.toml` / `~/.codex/config.toml`](https://developers.openai.com/codex/mcp) |
 | [Cursor](https://cursor.com/docs/context/skills) | `.agents/skills/…` or `.claude/skills/…` | same, under `~` | `.cursor/mcp.json` / `~/.cursor/mcp.json` |
-| [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) | `.agents/skills/…` or `.claude/skills/…` | same, under `~` | — (`servers` schema, not yet) |
+| [GitHub Copilot](https://code.visualstudio.com/docs/copilot/customization/agent-skills) | `.agents/skills/…` or `.claude/skills/…` | same, under `~` | [`.vscode/mcp.json`](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration) / — |
 | [Cline](https://docs.cline.bot/customization/cline-rules) | `.clinerules/<name>.md` | `~/Documents/Cline/Rules/…` | — |
 | [Windsurf](https://docs.windsurf.com/windsurf/cascade/memories) | `.windsurf/rules/<name>.md` (`trigger: model_decision`) | — (single global file) | — |
 | [Roo Code](https://roocodeinc.github.io/Roo-Code/features/custom-instructions) | `.roo/rules/<name>.md` | `~/.roo/rules/…` | `.roo/mcp.json` / — |
@@ -221,6 +221,8 @@ npm test           # vitest — unit, filesystem, and CLI end-to-end
 npm run typecheck
 npm run dev -- doctor   # run from source
 ```
+
+CI runs the suite on Linux, macOS, and Windows with Node 20 and 22. Releases are published from a version tag by [`release.yml`](.github/workflows/release.yml) with npm provenance.
 
 The whole tool layer is one table in [`src/adapters/tools.ts`](src/adapters/tools.ts). Supporting a new tool, or fixing a path that moved, is usually a single entry there plus a test in `test/layout.test.ts`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

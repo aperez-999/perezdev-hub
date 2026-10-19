@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.3.0 — 2026-10-19
 
 A refocus on one job: portable agent config with drift detection.
 
@@ -17,6 +17,7 @@ A refocus on one job: portable agent config with drift detection.
 - `perezdev add <source>` installs published skills from GitHub (`owner/repo[/path][@ref]`, or a URL) or a local folder: `SKILL.md` verbatim plus its bundled text files, recorded in the lockfile with the source and commit. `--list` shows what a source contains; `--skill` picks.
 - `perezdev upgrade [name]` re-fetches added skills and shows the upstream diff before applying it.
 - `perezdev agents-md` keeps a Commands section in `AGENTS.md`, generated from `package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`, and `Makefile`, and imports it into `CLAUDE.md` for Claude Code. `doctor` fails when the section no longer matches the manifests; `--off` removes it.
+- Copilot MCP servers, in `.vscode/mcp.json` (VS Code's `servers` format).
 - Codex MCP servers, in `~/.codex/config.toml` and `.codex/config.toml`. perezdev edits only its own `[mcp_servers.*]` tables and keeps comments and other settings byte-for-byte.
 - Onboarding that says what to do next. After `init`, `add`, `create`, `mcp`, and `stack`, perezdev shows which tool reads which file, how to try it in each tool, MCP launchers missing from `PATH` (`uvx`, `docker`) and secrets that aren't set, generated files that `.gitignore` hides from teammates, and the exact `git add` to commit the setup.
 - `perezdev ci` (also offered by `init`) writes a GitHub Actions workflow that runs `doctor` on pull requests.
@@ -36,6 +37,7 @@ A refocus on one job: portable agent config with drift detection.
 - Atomic writes reset file permissions (`~/.claude.json` became world-readable); modes are now preserved.
 - Unknown `--target` ids were silently ignored; they're now an error.
 - `npx perezdev-hub` works (the package now has a bin with its own name).
+- `doctor` treats a CRLF checkout (Git for Windows' default) as unchanged instead of reporting every generated file as modified.
 - `doctor`'s verdict on `CLAUDE.md` depends only on the repo, so it gives the same answer on a laptop and in CI.
 - Removing the last MCP server from a config perezdev created deletes the file instead of leaving `{"mcpServers": {}}`; emptied folders in a repo are removed too.
 - Generated skills: grammatical descriptions ("Use when reviewing…"), no repeated purpose, no generic filler sections.
