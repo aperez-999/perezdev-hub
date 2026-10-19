@@ -52,7 +52,7 @@
     "url": "https://github.com/aperez-999/perezdev-hub/issues"
   },
   "dependencies": {
-    "@clack/prompts": "^0.7.0",
+    "@clack/prompts": "^0.11.0",
     "commander": "^12.1.0",
     "picocolors": "^1.1.1",
     "smol-toml": "1.9.1",
@@ -60,12 +60,12 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
-    "@anthropic-ai/sdk": "^0.69.0"
+    "@anthropic-ai/sdk": "^0.135.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "tsup": "^8.3.5",
-    "tsx": "^4.19.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"
   }
