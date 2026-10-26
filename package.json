@@ -60,7 +60,7 @@
     "zod": "^3.23.8"
   },
   "optionalDependencies": {
-    "@anthropic-ai/sdk": "^0.135.0"
+    "@anthropic-ai/sdk": "^0.137.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
